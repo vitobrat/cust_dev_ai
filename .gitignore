@@ -3,6 +3,7 @@ poetry.lock
 .roomodes
 .vscode
 .mypy_cache
+.env
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
