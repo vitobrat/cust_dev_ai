@@ -1,4 +1,5 @@
-"""Base prompt manager for loading and managing prompt templates.
+"""
+Base prompt manager for loading and managing prompt templates.
 
 This module provides a base class for prompt management that can be
 extended for domain-specific use cases. Prompts are loaded from a directory

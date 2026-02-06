@@ -14,7 +14,7 @@ from langgraph.graph.state import CompiledStateGraph
 from src.depends import get_settings
 from src.infrastructure.llm.llm_adapter import LLMAdapter
 from src.infrastructure.prompt.base_prompt_manager import BasePromptManager
-from src.schemas.infrastructure_base import Schema
+from src.schemas.base import Schema
 
 
 class GraphError(Exception):
