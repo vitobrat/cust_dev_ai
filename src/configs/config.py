@@ -9,7 +9,7 @@ from omegaconf import OmegaConf
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from src.configs.constants import _DEFAULT_CONFIG_PATH, PROJECT_ROOT
+from src.configs.consts import _DEFAULT_CONFIG_PATH, PROJECT_ROOT
 
 dotenv_path = Path(PROJECT_ROOT, 'config', '.env')
 

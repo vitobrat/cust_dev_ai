@@ -6,14 +6,15 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from src.infrastructure.containers.root import RootContainer
-from src.infrastructure.llm.llm_adapter import LLMProtocol
+from src.infrastructure.llm.llm_adapter import LLMAdapter, LLMProtocol
+from src.infrastructure.prompt.base_prompt_manager import BasePromptManager
 
 
 @pytest.fixture(scope='session')
 def container() -> RootContainer:
     """Fixture providing a configured RootContainer instance."""
     container = RootContainer()
-    container.wire(modules=[__name__])
+    container.wire(modules=['tests'])
     return container
 
 
@@ -30,7 +31,19 @@ def mock_llm() -> LLMProtocol:
 
 
 @pytest.fixture(autouse=True)
-def override_llm_adapter(container: RootContainer, mock_llm: LLMProtocol):
-    """Automatically override the LLMAdapter dependency with a mock."""
-    with container.llm_adapter.override(mock_llm):
+def override_llm(container: RootContainer, mock_llm: LLMProtocol):
+    """Automatically override the LLM dependency with a mock."""
+    with container.llm.override(mock_llm):
         yield
+
+
+@pytest.fixture
+def mock_prompt_builder() -> BasePromptManager:
+    """Provide a mocked prompt builder for graph initialization."""
+    return MagicMock(spec=BasePromptManager)
+
+
+@pytest.fixture
+def llm_adapter_instance(mock_llm: LLMProtocol) -> LLMAdapter:
+    """Construct an LLMAdapter using the shared mock llm."""
+    return LLMAdapter(mock_llm)

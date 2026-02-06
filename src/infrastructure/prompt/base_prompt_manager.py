@@ -9,7 +9,7 @@ structure where each subdirectory represents a category containing .md files.
 from pathlib import Path
 from typing import Final, final
 
-from src.depends import make_logger
+from src.configs.log.logger import get_logger
 
 
 class BasePromptManager:
@@ -47,7 +47,7 @@ class BasePromptManager:
         """
         self._prompts_dir: Final[Path] = prompts_dir
         self._prompts: dict[str, dict[str, str]] = {}
-        self._logger: Final = make_logger(
+        self._logger: Final = get_logger(
             f"{self.__class__.__module__}.{self.__class__.__name__}",
         )
 

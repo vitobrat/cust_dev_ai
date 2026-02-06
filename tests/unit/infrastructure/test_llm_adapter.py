@@ -8,7 +8,7 @@ from langchain_core.messages import AIMessage, BaseMessage
 
 from src.infrastructure.llm.llm_adapter import LLMAdapter, LLMProtocol
 from tests.unit.infrastructure.schema import StructuredOutputSchema
-from tests.utils import _collect_stream, async_iter
+from tests.unit.infrastructure.utils import async_iter, collect_stream
 
 
 @pytest.mark.asyncio
@@ -76,7 +76,7 @@ async def test_astream_delegates_and_collects_chunks(mock_llm: LLMProtocol) -> N
     stream = AsyncMock(return_value=async_iter(expected))
     mock_llm.astream = stream
 
-    collected = await _collect_stream(adapter, messages, temperature=0.0)
+    collected = await collect_stream(adapter, messages, temperature=0.0)
 
     assert collected == expected
     stream.assert_awaited_once_with(messages, temperature=0.0)
@@ -91,7 +91,7 @@ async def test_astream_wraps_errors(mock_llm: LLMProtocol) -> None:
     mock_llm.astream.side_effect = ValueError('boom')
 
     with pytest.raises(RuntimeError) as excinfo:
-        await _collect_stream(adapter, messages)
+        await collect_stream(adapter, messages)
 
     assert 'Failed to stream from LLM' in str(excinfo.value)
 
