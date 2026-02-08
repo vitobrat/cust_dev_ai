@@ -7,8 +7,8 @@ from typing import Any, AsyncIterable, Dict, List, Protocol
 from langchain_core.messages import AIMessage, BaseMessage
 from langchain_core.tools import BaseTool
 
-from src.depends import make_logger
-from src.schemas.infrastructure_base import Schema
+from src.configs.log.logger import get_logger
+from src.schemas.base import Schema
 
 
 class LLMProtocol(Protocol):
@@ -46,7 +46,7 @@ class LLMAdapter:
 
     def __init__(self, llm: LLMProtocol) -> None:
         self._llm: LLMProtocol = llm
-        self._logger = make_logger(f"{__name__}.{self.__class__.__name__}")
+        self._logger = get_logger(f"{__name__}.{self.__class__.__name__}")
 
     async def ainvoke(self, messages: List[BaseMessage], **kwargs: Any) -> str:
         """Asynchronously invoke the LLM and return the generated text.
@@ -56,11 +56,11 @@ class LLMAdapter:
         logged and a ``RuntimeError`` is raised.
         """
         try:
-            response = await self._llm.ainvoke(messages, **kwargs)
-        except Exception as exc:  # pragma: no cover – exercised via tests
+            response: AIMessage = await self._llm.ainvoke(messages, **kwargs)
+        except Exception as exc:
             self._logger.error(f"LLM invocation error: {exc}")
             raise RuntimeError(f"Failed to invoke LLM: {exc}") from exc
-        return getattr(response, 'content', str(response))
+        return response.content
 
     async def astream(self, messages: List[BaseMessage], **kwargs: Any) -> AsyncIterable[AIMessage]:
         """Yield streamed ``AIMessage`` objects from the LLM.
@@ -69,7 +69,7 @@ class LLMAdapter:
         API consistent.
         """
         try:
-            async for chunk in self._llm.astream(messages, **kwargs):
+            async for chunk in await self._llm.astream(messages, **kwargs):
                 yield chunk
         except Exception as exc:
             self._logger.error(f"LLM streaming error: {exc}")
@@ -84,7 +84,7 @@ class LLMAdapter:
         """
         try:
             bound_llm = self._llm.bind_tools(tools, **kwargs)
-        except Exception as exc:  # pragma: no cover – exercised via tests
+        except Exception as exc:
             self._logger.error(f"Tool binding error: {exc}")
             raise RuntimeError(f"Failed to bind tools: {exc}") from exc
         return LLMAdapter(bound_llm)
@@ -101,7 +101,8 @@ class LLMAdapter:
         generated content.
         """
         bound_adapter = self.bind_tools(tools)
-        return await bound_adapter.ainvoke(messages, **kwargs)
+        bound_adapter_response: AIMessage = await bound_adapter.ainvoke(messages, **kwargs)
+        return bound_adapter_response.content
 
     def with_config(self, config: Dict[str, Any]) -> 'LLMAdapter':
         """Return a new adapter with an updated LLM configuration.
@@ -157,7 +158,6 @@ class LLMAdapter:
             raise RuntimeError(f"Failed to invoke structured LLM: {exc}") from exc
         if include_raw and isinstance(response, dict) and response.get('parsing_error'):
             self._logger.warning(
-                'Parsing error in structured output: %s',
-                response['parsing_error'],
+                f"Parsing error in structured output: {response['parsing_error']}",
             )
         return response
