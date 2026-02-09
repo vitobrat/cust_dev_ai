@@ -1,11 +1,15 @@
 from dependency_injector import containers, providers
 from langchain_openai import ChatOpenAI
+from langfuse import get_client
+from langfuse.langchain import CallbackHandler
 
 from src.configs.config import AppConfigs
 from src.infrastructure.llm.llm_adapter import LLMAdapter
 
 
 class RootContainer(containers.DeclarativeContainer):
+    """Dependency injection root wiring shared infrastructure services."""
+
     config: AppConfigs = providers.Configuration()
 
     llm = providers.Singleton(
@@ -21,3 +25,7 @@ class RootContainer(containers.DeclarativeContainer):
         LLMAdapter,
         llm=llm,
     )
+
+    langfuse_client = providers.Singleton(get_client)
+
+    langfuse_handler = providers.Factory(CallbackHandler)
