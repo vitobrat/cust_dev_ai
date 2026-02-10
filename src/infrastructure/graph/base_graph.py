@@ -51,9 +51,9 @@ class BaseGraph(StateGraph, ABC):
     def __init__(
         self,
         state_schema: Schema,
-        output_schema: Schema,
         llm_adapter: LLMAdapter,
         prompt_builder: BasePromptManager,
+        output_schema: Optional[Schema] = None,
         recursion_limit: Optional[int] = None,
         langfuse_handler: Optional[CallbackHandler] = None,
     ) -> None:
@@ -82,10 +82,10 @@ class BaseGraph(StateGraph, ABC):
             GraphError: If the graph execution fails or returns None.
         """
         graph_process_configs: Dict[str, Any] = {
-            'recursion_limit': self._recursion_limit,
+            "recursion_limit": self._recursion_limit,
         }
         if self._langfuse_handler:
-            graph_process_configs['callbacks'] = [self._langfuse_handler]
+            graph_process_configs["callbacks"] = [self._langfuse_handler]
 
         try:
             graph_result = await self._graph.ainvoke(

@@ -36,36 +36,36 @@ class UserSegmentSearchGraph(BaseGraph):
         )
 
     def _configurate_graph(self) -> None:
-        self.add_node('analyse_user_prompt', self._analyse_user_prompt)
-        self.add_node('find_user_segment', self._find_user_segment)
-        self.add_node('verify_user_segment', self._verify_user_segment)
-        self.add_node('output', self._output_node)
+        self.add_node("analyse_user_prompt", self._analyse_user_prompt)
+        self.add_node("find_user_segment", self._find_user_segment)
+        self.add_node("verify_user_segment", self._verify_user_segment)
+        self.add_node("output", self._output_node)
 
-        self.add_edge(START, 'analyse_user_prompt')
-        self.add_edge('analyse_user_prompt', 'find_user_segment')
-        self.add_edge('find_user_segment', 'verify_user_segment')
+        self.add_edge(START, "analyse_user_prompt")
+        self.add_edge("analyse_user_prompt", "find_user_segment")
+        self.add_edge("find_user_segment", "verify_user_segment")
         self.add_conditional_edges(
-            'verify_user_segment',
+            "verify_user_segment",
             self._check_verification_result,
-            ['analyse_user_prompt', 'output'],
+            ["analyse_user_prompt", "output"],
         )
-        self.add_edge('output', END)
+        self.add_edge("output", END)
 
     async def _check_verification_result(
         self,
         state: UserSegmentSearchSchema,
-    ) -> Literal['analyse_user_prompt', 'output']:
+    ) -> Literal["analyse_user_prompt", "output"]:
         """Check if the verification result is valid."""
         if state.verification_result and state.verification_result.is_valid:
-            return 'output'
+            return "output"
         else:
-            return 'analyse_user_prompt'
+            return "analyse_user_prompt"
 
     async def _analyse_user_prompt(self, state: UserSegmentSearchSchema) -> UserSegmentSearchSchema:
         """Analyse the user prompt to find relevant user segments."""
         prompt = self._prompt_builder.build_analyse_user_prompt(
             user_prompt=state.input_data.user_prompt,
-            previous_segments=';\n'.join([segment.segment_info for segment in state.segments_history]),
+            previous_segments=";\n".join([segment.segment_info for segment in state.segments_history]),
         )
 
         response: str = await self._llm_adapter.ainvoke(prompt)
@@ -91,8 +91,11 @@ class UserSegmentSearchGraph(BaseGraph):
     async def _verify_user_segment(self, state: UserSegmentSearchSchema) -> UserSegmentSearchSchema:
         """Verify the found user segments to ensure they are relevant and accurate."""
         if not state.segments_history:
-            raise ValueError('No user segments found to verify.')
-        last_segment = state.segments_history[-1]
+            raise ValueError("No user segments found to verify.")
+        try:
+            last_segment = state.segments_history[-1]
+        except IndexError:
+            raise ValueError("Segments history is empty, cannot verify user segment.")
 
         prompt = self._prompt_builder.build_verify_user_segment_prompt(
             segment_name=last_segment.segment_name,
@@ -112,7 +115,7 @@ class UserSegmentSearchGraph(BaseGraph):
     async def _output_node(self, state: UserSegmentSearchSchema) -> UserSegmentSearchOutputSchema:
         """Output the final user segment search results."""
         if not state.segments_history:
-            raise ValueError('No user segments found to output.')
+            raise ValueError("No user segments found to output.")
         last_segment = state.segments_history[-1]
 
         return UserSegmentSearchOutputSchema(
