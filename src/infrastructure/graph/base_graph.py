@@ -64,7 +64,7 @@ class BaseGraph(StateGraph, ABC):
         self._langfuse_handler: Optional[CallbackHandler] = langfuse_handler
         self._recursion_limit: int = recursion_limit if recursion_limit else _DEFAULT_GRAPH_RECURSION_LIMIT
         self.output_schema: Schema = output_schema
-        self._graph: CompiledStateGraph = self._build_graph()
+        self.graph: CompiledStateGraph = self._build_graph()
 
     async def process(
         self,
