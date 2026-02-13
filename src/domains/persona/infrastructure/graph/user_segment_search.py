@@ -2,6 +2,9 @@ from typing import Any, Literal
 
 from langgraph.graph import END, START
 
+from src.domains.persona.infrastructure.graph.graph_utils import (
+    get_last_segment,
+)
 from src.domains.persona.infrastructure.prompt.prompt_manager import (
     PersonaPromptManager,
 )
@@ -90,12 +93,7 @@ class UserSegmentSearchGraph(BaseGraph):
 
     async def _verify_user_segment(self, state: UserSegmentSearchSchema) -> UserSegmentSearchSchema:
         """Verify the found user segments to ensure they are relevant and accurate."""
-        if not state.segments_history:
-            raise ValueError("No user segments found to verify.")
-        try:
-            last_segment = state.segments_history[-1]
-        except IndexError:
-            raise ValueError("Segments history is empty, cannot verify user segment.")
+        last_segment: UserSegment = get_last_segment(state)
 
         prompt = self._prompt_builder.build_verify_user_segment_prompt(
             segment_name=last_segment.segment_name,
@@ -114,9 +112,7 @@ class UserSegmentSearchGraph(BaseGraph):
 
     async def _output_node(self, state: UserSegmentSearchSchema) -> UserSegmentSearchOutputSchema:
         """Output the final user segment search results."""
-        if not state.segments_history:
-            raise ValueError("No user segments found to output.")
-        last_segment = state.segments_history[-1]
+        last_segment: UserSegment = get_last_segment(state)
 
         return UserSegmentSearchOutputSchema(
             segment_name=last_segment.segment_name,

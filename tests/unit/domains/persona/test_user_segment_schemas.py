@@ -8,11 +8,11 @@ def test_user_segment_from_find_output_preserves_fields() -> None:
     """Ensure the helper converts a discovery result into a history entry."""
 
     discovery = FindUserSegmentOutput(
-        segment_name='Focused Early Adopters',
-        segment_description='Developers needing automated compliance documentation.',
-        comments_for_improvement='Highlight industry to avoid being too broad.',
-        unifying_problem='Manual compliance slowing release cycles',
-        where_to_find='Compliance Slack channels',
+        segment_name="Focused Early Adopters",
+        segment_description="Developers needing automated compliance documentation.",
+        comments_for_improvement="Highlight industry to avoid being too broad.",
+        unifying_problem="Manual compliance slowing release cycles",
+        where_to_find="Compliance Slack channels",
     )
 
     history_entry = UserSegment.from_find_output(discovery)
@@ -24,38 +24,43 @@ def test_user_segment_from_find_output_preserves_fields() -> None:
     assert history_entry.comments_for_improvement == discovery.comments_for_improvement
 
 
-def test_segment_info_includes_optional_fields_when_present() -> None:
-    """Verify segment_info emits every available data point."""
+def test_user_segment_info_includes_all_sections() -> None:
+    """Validate that segment info concatenates every available section."""
 
     segment = UserSegment(
-        segment_name='Niche founders',
-        segment_description='Bootstrapped founders who never touch marketing.',
-        unifying_problem='No reliable channel to reach testers',
-        where_to_find='Notion community',
+        segment_name="Automated QA Leads",
+        segment_description="Teams automating quality assurance across microservices.",
+        unifying_problem="Manual verification delaying deploys",
+        where_to_find="QA automation community channels",
+        comments_for_improvement="Provide targeted success metrics.",
+    )
+
+    expected_parts = [
+        "Segment Name: Automated QA Leads",
+        "Description: Teams automating quality assurance across microservices.",
+        "Unifying Problem: Manual verification delaying deploys",
+        "Where to Find: QA automation community channels",
+        "Comments for Improvement: Provide targeted success metrics.",
+    ]
+
+    assert segment.segment_info == ";\n".join(expected_parts)
+
+
+def test_user_segment_info_handles_missing_optional_fields() -> None:
+    """Ensure segment info omits empty optional sections and defaults comments."""
+
+    segment = UserSegment(
+        segment_name="DataOps Leaders",
+        segment_description="Leads wanting tighter feedback loops from analytics.",
+        unifying_problem="",
+        where_to_find="",
         comments_for_improvement=None,
     )
 
-    info = segment.segment_info
+    expected_parts = [
+        "Segment Name: DataOps Leaders",
+        "Description: Leads wanting tighter feedback loops from analytics.",
+        "Comments for Improvement: None",
+    ]
 
-    assert 'Segment Name: Niche founders' in info
-    assert 'Description: Bootstrapped founders who never touch marketing.' in info
-    assert 'Unifying Problem: No reliable channel to reach testers' in info
-    assert 'Where to Find: Notion community' in info
-    assert 'Comments for Improvement: None' in info
-
-
-def test_segment_info_handles_missing_optional_fields() -> None:
-    """Ensure segment_info still renders when optional metadata is absent."""
-
-    segment = UserSegment(
-        segment_name='Beta engineers',
-        segment_description='Engineers looking for automated safety checks.',
-    )
-
-    info = segment.segment_info
-
-    assert 'Segment Name: Beta engineers' in info
-    assert 'Description: Engineers looking for automated safety checks.' in info
-    assert 'Unifying Problem' not in info
-    assert 'Where to Find' not in info
-    assert 'Comments for Improvement: None' in info
+    assert segment.segment_info == ";\n".join(expected_parts)

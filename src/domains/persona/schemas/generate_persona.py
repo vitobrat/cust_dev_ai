@@ -78,14 +78,15 @@ class DemographicAttributePersona(BaseModel):
         """Formatted persona description ready to be used in prompts"""
         return "\n".join(
             [
-                self._build_personal_info(),
-                self._build_problem_info(),
-                self._build_social_info(),
-                self._build_psychographic_behavior_info(),
+                self.personal_info,
+                self.problem_info,
+                self.social_info,
+                self.psychographic_behavior_info,
             ],
         )
 
-    def _build_personal_info(self) -> str:
+    @property
+    def personal_info(self) -> str:
         """Build a formatted string of the personal information block."""
         personal_info_block = self.personal_info_block
 
@@ -100,7 +101,8 @@ class DemographicAttributePersona(BaseModel):
 
         return "\n".join(lines)
 
-    def _build_problem_info(self) -> str:
+    @property
+    def problem_info(self) -> str:
         """Build a formatted string of the problem block."""
         problem_block = self.problem_block
 
@@ -115,7 +117,8 @@ class DemographicAttributePersona(BaseModel):
 
         return "\n".join(lines)
 
-    def _build_social_info(self) -> str:
+    @property
+    def social_info(self) -> str:
         """Build a formatted string of the social block."""
         social_block = self.social_block
 
@@ -130,7 +133,8 @@ class DemographicAttributePersona(BaseModel):
 
         return "\n".join(lines)
 
-    def _build_psychographic_behavior_info(self) -> str:
+    @property
+    def psychographic_behavior_info(self) -> str:
         """Build a formatted string of the psychographic behavior block."""
         psychographic_behavior_block = self.psychographic_behavior_block
 

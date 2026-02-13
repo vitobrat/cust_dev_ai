@@ -88,7 +88,7 @@ class BaseGraph(StateGraph, ABC):
             graph_process_configs["callbacks"] = [self._langfuse_handler]
 
         try:
-            graph_result = await self._graph.ainvoke(
+            graph_result = await self.graph.ainvoke(
                 state,
                 config=graph_process_configs,
             )
