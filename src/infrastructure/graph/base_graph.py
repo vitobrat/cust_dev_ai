@@ -12,6 +12,7 @@ from langgraph.graph import StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
 from src.configs.consts import DEFAULT_GRAPH_RECURSION_LIMIT
+from src.configs.log.logger import get_logger
 from src.infrastructure.llm.llm_adapter import LLMAdapter
 from src.infrastructure.prompt.base_prompt_manager import BasePromptManager
 from src.schemas.base import Schema
@@ -59,12 +60,34 @@ class BaseGraph(StateGraph, ABC):
     ) -> None:
         """Initialize the base graph with configuration and dependencies."""
         super().__init__(state_schema, output_schema=output_schema)
+        self._logger = get_logger(f"{__name__}.{self.__class__.__name__}")
         self._llm_adapter: LLMAdapter = llm_adapter
         self._prompt_builder: BasePromptManager = prompt_builder
         self._langfuse_handler: Optional[CallbackHandler] = langfuse_handler
-        self._recursion_limit: int = recursion_limit
+
+        if isinstance(recursion_limit, int) and recursion_limit > 0:  # type: ignore [redundant-expr]
+            self._recursion_limit: int = recursion_limit
+        else:
+            self._logger.warning(
+                f"Invalid recursion limit {recursion_limit} provided, using default {DEFAULT_GRAPH_RECURSION_LIMIT}",
+            )
+            self._recursion_limit = DEFAULT_GRAPH_RECURSION_LIMIT
+
         self.output_schema: Schema = output_schema
         self.graph: CompiledStateGraph = self._build_graph()
+
+    @property
+    def recursion_limit(self) -> int:
+        """Get the current recursion limit for graph execution."""
+        return self._recursion_limit
+
+    @recursion_limit.setter
+    def recursion_limit(self, new_recursion_limit: int) -> None:
+        """Set a new recursion limit for graph execution."""
+        if isinstance(new_recursion_limit, int) and new_recursion_limit > 0:  # type: ignore [redundant-expr]
+            self._recursion_limit = new_recursion_limit
+        else:
+            raise ValueError("Recursion limit must be a positive integer.")
 
     async def process(
         self,

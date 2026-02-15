@@ -4,7 +4,7 @@ Unit tests for BaseGraph initialization and processing logic, using a concrete s
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from langfuse.langchain import CallbackHandler
@@ -16,141 +16,264 @@ from src.infrastructure.graph.base_graph import GraphError
 from src.infrastructure.llm.llm_adapter import LLMAdapter
 from src.infrastructure.prompt.base_prompt_manager import BasePromptManager
 from tests.schema import DummyOutputSchema, DummyStateSchema
-from tests.unit.infrastructure.base_graph.graph_mock import MockBaseGraph
-from tests.unit.infrastructure.utils import make_graph
+from tests.unit.infrastructure.base_graph.graph_mock import BaseGraphTest
 
 
 def test_base_graph_initializes_dependencies_and_builds_graph(
-    concrete_graph: MockBaseGraph,
-    mock_compiled_state_graph: CompiledStateGraph,
+    test_base_graph: BaseGraphTest,
     mock_prompt_builder: BasePromptManager,
     mock_llm_adapter: LLMAdapter,
 ) -> None:
     """Ensure constructor wires dependencies and compiles the graph."""
-
-    assert concrete_graph._llm_adapter is mock_llm_adapter
-    assert concrete_graph._prompt_builder is mock_prompt_builder
-    assert concrete_graph.graph is mock_compiled_state_graph
-    assert concrete_graph.configured is True
-    assert concrete_graph._recursion_limit == DEFAULT_GRAPH_RECURSION_LIMIT
+    assert test_base_graph._llm_adapter is mock_llm_adapter
+    assert test_base_graph._prompt_builder is mock_prompt_builder
+    assert test_base_graph.configured is True
+    assert test_base_graph._recursion_limit == DEFAULT_GRAPH_RECURSION_LIMIT
 
 
 def test_base_graph_accepts_custom_recursion_limit(
-    mock_compiled_state_graph: CompiledStateGraph,
     test_schemas: tuple[type[BaseModel], type[BaseModel]],
     mock_llm_adapter: LLMAdapter,
     mock_prompt_builder: BasePromptManager,
 ) -> None:
     """Verify the recursion limit can be overridden through the constructor."""
+    state_schema, output_schema = test_schemas
+    custom_limit = 42
 
-    graph = make_graph(
-        mock_compiled_state_graph,
-        test_schemas,
-        mock_llm_adapter,
-        mock_prompt_builder,
-        recursion_limit=5,
-    )
-    assert graph._recursion_limit == 5
-
-
-@pytest.mark.asyncio
-async def test_process_invokes_graph_and_validates_output(
-    concrete_graph: MockBaseGraph,
-    mock_compiled_state_graph: CompiledStateGraph,
-) -> None:
-    """Ensure process forwards state and returns validated data."""
-
-    mock_compiled_state_graph.ainvoke.return_value = {"output": "done"}
-    payload = DummyStateSchema(input="value").model_dump()
-    result = await concrete_graph.process(payload)
-    assert isinstance(result, DummyOutputSchema)
-    assert result.output == "done"
-    mock_compiled_state_graph.ainvoke.assert_awaited_once_with(
-        payload,
-        config={"recursion_limit": concrete_graph._recursion_limit},
+    graph = BaseGraphTest(
+        state_schema=state_schema,
+        output_schema=output_schema,
+        llm_adapter=mock_llm_adapter,
+        prompt_builder=mock_prompt_builder,
+        recursion_limit=custom_limit,
     )
 
+    assert graph._recursion_limit == custom_limit
 
-@pytest.mark.asyncio
-async def test_process_includes_langfuse_handler_in_callbacks(
-    mock_compiled_state_graph: CompiledStateGraph,
+
+def test_base_graph_handles_invalid_recursion_limit_on_init(
     test_schemas: tuple[type[BaseModel], type[BaseModel]],
     mock_llm_adapter: LLMAdapter,
     mock_prompt_builder: BasePromptManager,
 ) -> None:
-    """Verify langfuse handler is added to the config callbacks list."""
+    """Verify invalid recursion limit falls back to default during initialization."""
+    state_schema, output_schema = test_schemas
 
-    handler = MagicMock(spec=CallbackHandler)
-    graph = make_graph(
-        mock_compiled_state_graph,
-        test_schemas,
-        mock_llm_adapter,
-        mock_prompt_builder,
-        langfuse_handler=handler,
+    # Test with negative value
+    graph_negative = BaseGraphTest(
+        state_schema=state_schema,
+        output_schema=output_schema,
+        llm_adapter=mock_llm_adapter,
+        prompt_builder=mock_prompt_builder,
+        recursion_limit=-5,
     )
-    mock_compiled_state_graph.ainvoke.return_value = {"output": "ok"}
-    state = DummyStateSchema(input="value").model_dump()
-    await graph.process(state)
-    config = mock_compiled_state_graph.ainvoke.call_args.kwargs["config"]
-    assert config["recursion_limit"] == graph._recursion_limit
-    assert config["callbacks"] == [handler]
+    assert graph_negative._recursion_limit == DEFAULT_GRAPH_RECURSION_LIMIT
+
+    # Test with zero
+    graph_zero = BaseGraphTest(
+        state_schema=state_schema,
+        output_schema=output_schema,
+        llm_adapter=mock_llm_adapter,
+        prompt_builder=mock_prompt_builder,
+        recursion_limit=0,
+    )
+    assert graph_zero._recursion_limit == DEFAULT_GRAPH_RECURSION_LIMIT
+
+
+def test_base_graph_accepts_langfuse_handler(
+    test_base_graph: BaseGraphTest,
+) -> None:
+    """Verify langfuse handler is stored correctly."""
+    assert test_base_graph._langfuse_handler is not None
+
+
+def test_base_graph_stores_output_schema(
+    test_base_graph: BaseGraphTest,
+    test_schemas: tuple[type[BaseModel], type[BaseModel]],
+) -> None:
+    """Verify output schema is stored correctly."""
+    _, output_schema = test_schemas
+
+    assert test_base_graph.output_schema is output_schema
+
+
+def test_recursion_limit_setter_with_valid_value(test_base_graph: BaseGraphTest) -> None:
+    """Verify recursion_limit property setter accepts valid positive integers."""
+    test_base_graph.recursion_limit = 100
+    assert test_base_graph._recursion_limit == 100
+    assert test_base_graph.recursion_limit == 100
+
+
+def test_recursion_limit_setter_rejects_negative_value(test_base_graph: BaseGraphTest) -> None:
+    """Verify recursion_limit property setter rejects negative values."""
+    with pytest.raises(ValueError, match="Recursion limit must be a positive integer"):
+        test_base_graph.recursion_limit = -10
+
+
+def test_recursion_limit_setter_rejects_zero(test_base_graph: BaseGraphTest) -> None:
+    """Verify recursion_limit property setter rejects zero."""
+    with pytest.raises(ValueError, match="Recursion limit must be a positive integer"):
+        test_base_graph.recursion_limit = 0
+
+
+def test_recursion_limit_setter_rejects_non_integer(test_base_graph: BaseGraphTest) -> None:
+    """Verify recursion_limit property setter rejects non-integer values."""
+    with pytest.raises(ValueError, match="Recursion limit must be a positive integer"):
+        test_base_graph.recursion_limit = "invalid"  # type: ignore[assignment]
+
+    with pytest.raises(ValueError, match="Recursion limit must be a positive integer"):
+        test_base_graph.recursion_limit = 3.78  # type: ignore[assignment]
 
 
 @pytest.mark.asyncio
-async def test_process_wraps_graph_invocation_errors(
-    mock_compiled_state_graph: CompiledStateGraph,
+async def test_process_executes_graph_successfully(test_base_graph: BaseGraphTest) -> None:
+    """Verify process method executes graph and returns validated output."""
+    input_state = DummyStateSchema(input="test input")
+    expected_output = {"output": "test output"}
+
+    test_base_graph.graph.ainvoke = AsyncMock(return_value=expected_output)
+
+    graph_result = await test_base_graph.process(input_state)
+
+    assert isinstance(graph_result, DummyOutputSchema)
+    assert graph_result.output == "test output"
+    test_base_graph.graph.ainvoke.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_process_passes_recursion_limit_to_graph(test_base_graph: BaseGraphTest) -> None:
+    """Verify process method passes recursion limit in config."""
+    input_state = DummyStateSchema(input="test")
+    test_base_graph.graph.ainvoke = AsyncMock(return_value={"output": "result"})
+
+    await test_base_graph.process(input_state)
+
+    call_args = test_base_graph.graph.ainvoke.call_args
+    assert call_args[1]["config"]["recursion_limit"] == DEFAULT_GRAPH_RECURSION_LIMIT
+
+
+@pytest.mark.asyncio
+async def test_process_passes_langfuse_handler_when_present(
     test_schemas: tuple[type[BaseModel], type[BaseModel]],
     mock_llm_adapter: LLMAdapter,
     mock_prompt_builder: BasePromptManager,
 ) -> None:
-    """Ensure unexpected graph exceptions are raised as GraphError."""
+    """Verify process method includes langfuse handler in callbacks when configured."""
+    state_schema, output_schema = test_schemas
+    mock_handler = MagicMock(spec=CallbackHandler)
 
-    graph = make_graph(
-        mock_compiled_state_graph,
-        test_schemas,
-        mock_llm_adapter,
-        mock_prompt_builder,
+    graph = BaseGraphTest(
+        state_schema=state_schema,
+        output_schema=output_schema,
+        llm_adapter=mock_llm_adapter,
+        prompt_builder=mock_prompt_builder,
+        langfuse_handler=mock_handler,
     )
-    mock_compiled_state_graph.ainvoke.side_effect = ValueError("boom")
-    with pytest.raises(GraphError):
-        await graph.process(DummyStateSchema(input="value").model_dump())
+    graph.graph.ainvoke = AsyncMock(return_value={"output": "result"})
+
+    input_state = DummyStateSchema(input="test")
+    await graph.process(input_state)
+
+    call_args = graph.graph.ainvoke.call_args
+    assert "callbacks" in call_args[1]["config"]
+    assert mock_handler in call_args[1]["config"]["callbacks"]
 
 
 @pytest.mark.asyncio
-async def test_process_raises_when_graph_returns_none(
-    mock_compiled_state_graph: CompiledStateGraph,
+async def test_process_does_not_pass_callbacks_when_no_langfuse_handler(
     test_schemas: tuple[type[BaseModel], type[BaseModel]],
     mock_llm_adapter: LLMAdapter,
     mock_prompt_builder: BasePromptManager,
 ) -> None:
-    """Invalid None responses from the graph should surface as GraphError."""
-
-    graph = make_graph(
-        mock_compiled_state_graph,
-        test_schemas,
-        mock_llm_adapter,
-        mock_prompt_builder,
+    """Verify process method does not include callbacks when langfuse handler is None."""
+    state_schema, output_schema = test_schemas
+    graph = BaseGraphTest(
+        state_schema=state_schema,
+        output_schema=output_schema,
+        llm_adapter=mock_llm_adapter,
+        prompt_builder=mock_prompt_builder,
     )
-    mock_compiled_state_graph.ainvoke.return_value = None
-    with pytest.raises(GraphError):
-        await graph.process(DummyStateSchema(input="value").model_dump())
+
+    graph.graph.ainvoke = AsyncMock(return_value={"output": "result"})
+
+    input_state = DummyStateSchema(input="test")
+    await graph.process(input_state)
+
+    call_args = graph.graph.ainvoke.call_args
+    assert "callbacks" not in call_args[1]["config"]
 
 
 @pytest.mark.asyncio
-async def test_process_raises_on_output_validation_failure(
-    mock_compiled_state_graph: CompiledStateGraph,
+async def test_process_raises_graph_error_on_graph_execution_failure(
+    test_base_graph: BaseGraphTest,
+) -> None:
+    """Verify process method wraps graph execution exceptions in GraphError."""
+    input_state = DummyStateSchema(input="test")
+    test_base_graph.graph.ainvoke = AsyncMock(side_effect=RuntimeError("Graph failed"))
+
+    with pytest.raises(GraphError, match="Error during BaseGraphTest execution"):
+        await test_base_graph.process(input_state)
+
+
+@pytest.mark.asyncio
+async def test_process_raises_graph_error_when_graph_returns_none(
+    test_base_graph: BaseGraphTest,
+) -> None:
+    """Verify process method raises GraphError when graph returns None."""
+    input_state = DummyStateSchema(input="test")
+    test_base_graph.graph.ainvoke = AsyncMock(return_value=None)
+
+    with pytest.raises(GraphError, match="Graph BaseGraphTest returned None response"):
+        await test_base_graph.process(input_state)
+
+
+@pytest.mark.asyncio
+async def test_process_raises_graph_error_on_output_validation_failure(
+    test_base_graph: BaseGraphTest,
+) -> None:
+    """Verify process method raises GraphError when output validation fails."""
+    input_state = DummyStateSchema(input="test")
+    # Return invalid output that doesn't match schema
+    test_base_graph.graph.ainvoke = AsyncMock(return_value={"invalid_field": "value"})
+
+    with pytest.raises(GraphError, match="Failed to validate output for BaseGraphTest"):
+        await test_base_graph.process(input_state)
+
+
+@pytest.mark.asyncio
+async def test_process_uses_custom_recursion_limit(
     test_schemas: tuple[type[BaseModel], type[BaseModel]],
     mock_llm_adapter: LLMAdapter,
     mock_prompt_builder: BasePromptManager,
 ) -> None:
-    """Ensure schema validation failures are reported via GraphError."""
+    """Verify process method uses custom recursion limit when set."""
+    state_schema, output_schema = test_schemas
+    custom_limit = 77
 
-    graph = make_graph(
-        mock_compiled_state_graph,
-        test_schemas,
-        mock_llm_adapter,
-        mock_prompt_builder,
+    graph = BaseGraphTest(
+        state_schema=state_schema,
+        output_schema=output_schema,
+        llm_adapter=mock_llm_adapter,
+        prompt_builder=mock_prompt_builder,
+        recursion_limit=custom_limit,
     )
-    mock_compiled_state_graph.ainvoke.return_value = {"unexpected": "value"}
-    with pytest.raises(GraphError):
-        await graph.process(DummyStateSchema(input="value").model_dump())
+    graph.graph.ainvoke = AsyncMock(return_value={"output": "result"})
+
+    input_state = DummyStateSchema(input="test")
+    await graph.process(input_state)
+
+    call_args = graph.graph.ainvoke.call_args
+    assert call_args[1]["config"]["recursion_limit"] == custom_limit
+
+
+def test_build_graph_calls_configurate_graph(
+    test_base_graph: BaseGraphTest,
+) -> None:
+    """Verify _build_graph calls _configurate_graph during initialization."""
+
+    assert test_base_graph.configured is True
+
+
+def test_build_graph_returns_compiled_graph(test_base_graph: BaseGraphTest) -> None:
+    """Verify _build_graph returns a CompiledStateGraph instance."""
+    assert isinstance(test_base_graph.graph, CompiledStateGraph)

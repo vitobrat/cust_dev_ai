@@ -24,43 +24,29 @@ def test_user_segment_from_find_output_preserves_fields() -> None:
     assert history_entry.comments_for_improvement == discovery.comments_for_improvement
 
 
-def test_user_segment_info_includes_all_sections() -> None:
+def test_user_segment_info_includes_all_sections(user_segment_state: UserSegment) -> None:
     """Validate that segment info concatenates every available section."""
 
-    segment = UserSegment(
-        segment_name="Automated QA Leads",
-        segment_description="Teams automating quality assurance across microservices.",
-        unifying_problem="Manual verification delaying deploys",
-        where_to_find="QA automation community channels",
-        comments_for_improvement="Provide targeted success metrics.",
-    )
-
     expected_parts = [
-        "Segment Name: Automated QA Leads",
-        "Description: Teams automating quality assurance across microservices.",
-        "Unifying Problem: Manual verification delaying deploys",
-        "Where to Find: QA automation community channels",
-        "Comments for Improvement: Provide targeted success metrics.",
+        "Segment Name: Automation Architects",
+        "Description: Focus on resilient pipelines",
+        "Unifying Problem: Manual toil",
+        "Where to Find: Infra communities",
+        "Comments for Improvement: Share success metrics.",
     ]
 
-    assert segment.segment_info == ";\n".join(expected_parts)
+    assert user_segment_state.segment_info == ";\n".join(expected_parts)
 
 
-def test_user_segment_info_handles_missing_optional_fields() -> None:
+def test_user_segment_info_handles_missing_optional_fields(user_segment_state: UserSegment) -> None:
     """Ensure segment info omits empty optional sections and defaults comments."""
-
-    segment = UserSegment(
-        segment_name="DataOps Leaders",
-        segment_description="Leads wanting tighter feedback loops from analytics.",
-        unifying_problem="",
-        where_to_find="",
-        comments_for_improvement=None,
-    )
+    user_segment_state.unifying_problem = ""
+    user_segment_state.where_to_find = ""
 
     expected_parts = [
-        "Segment Name: DataOps Leaders",
-        "Description: Leads wanting tighter feedback loops from analytics.",
-        "Comments for Improvement: None",
+        "Segment Name: Automation Architects",
+        "Description: Focus on resilient pipelines",
+        "Comments for Improvement: Share success metrics.",
     ]
 
-    assert segment.segment_info == ";\n".join(expected_parts)
+    assert user_segment_state.segment_info == ";\n".join(expected_parts)

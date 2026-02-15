@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from langfuse.langchain import CallbackHandler
+from langgraph.graph import END, START
 from langgraph.graph.state import CompiledStateGraph
 from pydantic import BaseModel
 
@@ -10,7 +11,7 @@ from src.infrastructure.llm.llm_adapter import LLMAdapter
 from src.infrastructure.prompt.base_prompt_manager import BasePromptManager
 
 
-class MockBaseGraph(BaseGraph):
+class BaseGraphTest(BaseGraph):
     """Minimal graph implementation used for BaseGraph unit tests."""
 
     _compiled_graph: CompiledStateGraph
@@ -22,11 +23,10 @@ class MockBaseGraph(BaseGraph):
         output_schema: type[BaseModel],
         llm_adapter: LLMAdapter,
         prompt_builder: BasePromptManager,
-        compiled_graph: CompiledStateGraph,
         recursion_limit: int = DEFAULT_GRAPH_RECURSION_LIMIT,
         langfuse_handler: CallbackHandler | None = None,
     ) -> None:
-        self._compiled_graph = compiled_graph
+        """Initialize the test graph with injected dependencies and a mock compiled graph."""
         self.configured = False
         super().__init__(
             state_schema=state_schema,
@@ -39,10 +39,6 @@ class MockBaseGraph(BaseGraph):
 
     def _configurate_graph(self) -> None:
         """Track that configuration ran without needing actual nodes."""
+        self.add_edge(START, END)
 
         self.configured = True
-
-    def compile(self) -> CompiledStateGraph:
-        """Return the prepared compiled graph instead of computing a new one."""
-
-        return self._compiled_graph

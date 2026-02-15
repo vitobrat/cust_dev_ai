@@ -2,12 +2,13 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from langgraph.graph.state import CompiledStateGraph
+from langfuse.langchain import CallbackHandler
 from pydantic import BaseModel
 
+from src.infrastructure.graph.base_graph import BaseGraph
 from src.infrastructure.llm.llm_adapter import LLMAdapter
 from src.infrastructure.prompt.base_prompt_manager import BasePromptManager
-from tests.unit.infrastructure.base_graph.graph_mock import MockBaseGraph
+from tests.unit.infrastructure.base_graph.graph_mock import BaseGraphTest
 
 
 @pytest.fixture
@@ -45,27 +46,32 @@ def fixture_structured_prompts(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def mock_compiled_state_graph() -> CompiledStateGraph:
+def mock_base_graph() -> BaseGraph:
     """Provide a fresh compiled graph stub for each test."""
-    compiled_graph = MagicMock(spec=CompiledStateGraph)
+    compiled_graph = MagicMock(spec=BaseGraph)
     compiled_graph.ainvoke = AsyncMock()
     return compiled_graph
 
 
 @pytest.fixture
-def concrete_graph(
-    mock_compiled_state_graph: CompiledStateGraph,
+def mock_prompt_builder() -> BasePromptManager:
+    """Provide a mocked prompt builder for graph initialization."""
+    return MagicMock(spec=BasePromptManager)
+
+
+@pytest.fixture
+def test_base_graph(
     test_schemas: tuple[type[BaseModel], type[BaseModel]],
     mock_llm_adapter: LLMAdapter,
     mock_prompt_builder: BasePromptManager,
-) -> MockBaseGraph:
+) -> BaseGraphTest:
     """Instantiate the concrete test graph used across initialization tests."""
-
     state_schema, output_schema = test_schemas
-    return MockBaseGraph(
+
+    return BaseGraphTest(
         state_schema=state_schema,
         output_schema=output_schema,
         llm_adapter=mock_llm_adapter,
         prompt_builder=mock_prompt_builder,
-        compiled_graph=mock_compiled_state_graph,
+        langfuse_handler=MagicMock(spec=CallbackHandler),
     )

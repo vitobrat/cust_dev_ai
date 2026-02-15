@@ -11,6 +11,15 @@ repos:
       types: [python]
       files: ^src/
 
+    - id: flake8-tests
+      name: flake8 (tests/)
+      entry: flake8
+      additional_dependencies: [wemake-python-styleguide>=0.19.0]
+      args: ["--config=setup-tests.cfg"]
+      language: python
+      types: [python]
+      files: ^tests/
+
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:
@@ -37,6 +46,10 @@ repos:
       additional_dependencies: [types-PyYAML>=6.0.12.12]
       args: [--config-file=setup.cfg]
       files: ^src/
+    - id: mypy
+      additional_dependencies: [types-PyYAML>=6.0.12.12]
+      args: [--config-file=setup-tests.cfg]
+      files: ^tests/
 
   - repo: https://github.com/pycqa/isort
     rev: 6.0.0

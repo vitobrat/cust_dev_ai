@@ -32,12 +32,14 @@ class PersonaContainer(containers.DeclarativeContainer):
         prompt_builder=prompt_builder,
         llm_adapter=infrastructure.llm_adapter,
         recursion_limit=config.persona.recursion_limit,
+        langfuse_handler=infrastructure.langfuse_handler,
     )
 
     generate_single_persona_graph: GenerateSinglePersona = providers.Factory(
         GenerateSinglePersona,
         prompt_builder=prompt_builder,
         llm_adapter=infrastructure.llm_adapter,
+        langfuse_handler=infrastructure.langfuse_handler,
     )
 
     generate_personas_graph: GeneratePersonas = providers.Factory(
@@ -45,6 +47,7 @@ class PersonaContainer(containers.DeclarativeContainer):
         prompt_builder=prompt_builder,
         llm_adapter=infrastructure.llm_adapter,
         sub_graph=generate_single_persona_graph,
+        langfuse_handler=infrastructure.langfuse_handler,
     )
 
 
