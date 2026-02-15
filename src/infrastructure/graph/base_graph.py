@@ -11,7 +11,7 @@ from langfuse.langchain import CallbackHandler
 from langgraph.graph import StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
-from src.configs.consts import _DEFAULT_GRAPH_RECURSION_LIMIT
+from src.configs.consts import DEFAULT_GRAPH_RECURSION_LIMIT
 from src.infrastructure.llm.llm_adapter import LLMAdapter
 from src.infrastructure.prompt.base_prompt_manager import BasePromptManager
 from src.schemas.base import Schema
@@ -51,10 +51,10 @@ class BaseGraph(StateGraph, ABC):
     def __init__(
         self,
         state_schema: Schema,
-        output_schema: Schema,
         llm_adapter: LLMAdapter,
         prompt_builder: BasePromptManager,
-        recursion_limit: Optional[int] = None,
+        output_schema: Optional[Schema] = None,
+        recursion_limit: int = DEFAULT_GRAPH_RECURSION_LIMIT,
         langfuse_handler: Optional[CallbackHandler] = None,
     ) -> None:
         """Initialize the base graph with configuration and dependencies."""
@@ -62,9 +62,9 @@ class BaseGraph(StateGraph, ABC):
         self._llm_adapter: LLMAdapter = llm_adapter
         self._prompt_builder: BasePromptManager = prompt_builder
         self._langfuse_handler: Optional[CallbackHandler] = langfuse_handler
-        self._recursion_limit: int = recursion_limit if recursion_limit else _DEFAULT_GRAPH_RECURSION_LIMIT
+        self._recursion_limit: int = recursion_limit
         self.output_schema: Schema = output_schema
-        self._graph: CompiledStateGraph = self._build_graph()
+        self.graph: CompiledStateGraph = self._build_graph()
 
     async def process(
         self,
@@ -82,13 +82,13 @@ class BaseGraph(StateGraph, ABC):
             GraphError: If the graph execution fails or returns None.
         """
         graph_process_configs: Dict[str, Any] = {
-            'recursion_limit': self._recursion_limit,
+            "recursion_limit": self._recursion_limit,
         }
         if self._langfuse_handler:
-            graph_process_configs['callbacks'] = [self._langfuse_handler]
+            graph_process_configs["callbacks"] = [self._langfuse_handler]
 
         try:
-            graph_result = await self._graph.ainvoke(
+            graph_result = await self.graph.ainvoke(
                 state,
                 config=graph_process_configs,
             )

@@ -8,13 +8,14 @@ import pytest
 from src.infrastructure.containers.root import RootContainer
 from src.infrastructure.llm.llm_adapter import LLMAdapter, LLMProtocol
 from src.infrastructure.prompt.base_prompt_manager import BasePromptManager
+from tests.schema import DummyOutputSchema
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def container() -> RootContainer:
     """Fixture providing a configured RootContainer instance."""
     container = RootContainer()
-    container.wire(modules=['tests'])
+    container.wire(modules=["tests"])
     return container
 
 
@@ -33,7 +34,7 @@ def mock_llm() -> LLMProtocol:
 @pytest.fixture(autouse=True)
 def override_llm(container: RootContainer, mock_llm: LLMProtocol):
     """Automatically override the LLM dependency with a mock."""
-    with container.llm.override(mock_llm):
+    with container.infrastructure.llm.override(mock_llm):
         yield
 
 
@@ -44,6 +45,12 @@ def mock_prompt_builder() -> BasePromptManager:
 
 
 @pytest.fixture
-def llm_adapter_instance(mock_llm: LLMProtocol) -> LLMAdapter:
+def mock_llm_adapter() -> LLMAdapter:
     """Construct an LLMAdapter using the shared mock llm."""
-    return LLMAdapter(mock_llm)
+    llm_adapter_mock: LLMAdapter = MagicMock(spec=LLMAdapter)
+    llm_adapter_mock.ainvoke = AsyncMock(return_value="llm adapter ainvoke")
+    llm_adapter_mock.structured_ainvoke = AsyncMock(
+        return_value=DummyOutputSchema(output="llm adapter structuted output"),
+    )
+
+    return cast(LLMAdapter, llm_adapter_mock)
