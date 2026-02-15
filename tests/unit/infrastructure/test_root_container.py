@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from langchain_openai import ChatOpenAI
+from langfuse.langchain import CallbackHandler
 
 from tests.unit.infrastructure.consts import LLM_CONFIG
 from tests.unit.infrastructure.utils import configured_root_container
@@ -36,3 +37,29 @@ def test_root_container_applies_llm_configuration() -> None:
     assert call_kwargs["temperature"] == LLM_CONFIG["temperature"]
     assert call_kwargs["max_tokens"] == LLM_CONFIG["max_tokens"]
     assert call_kwargs["base_url"] == LLM_CONFIG["base_llm_url"]
+
+    
+def test_root_container_exposes_langfuse_client_and_handler() -> None:
+    """Ensure Langfuse client and handler bindings are available."""
+
+    container = configured_root_container()
+    fake_client = MagicMock()
+    fake_handler = MagicMock(spec=CallbackHandler)
+
+    with (
+        patch(
+            'src.infrastructure.containers.root.get_client',
+            return_value=fake_client,
+        ) as client_factory,
+        patch(
+            'src.infrastructure.containers.root.CallbackHandler',
+            return_value=fake_handler,
+        ) as handler_factory,
+    ):
+        client_instance = container.langfuse_client()
+        handler_instance = container.langfuse_handler()
+
+    assert client_instance is fake_client
+    client_factory.assert_called_once()
+    handler_factory.assert_called_once()
+    assert handler_instance is fake_handler
