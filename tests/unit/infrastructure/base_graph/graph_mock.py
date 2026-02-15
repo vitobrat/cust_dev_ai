@@ -4,6 +4,7 @@ from langfuse.langchain import CallbackHandler
 from langgraph.graph.state import CompiledStateGraph
 from pydantic import BaseModel
 
+from src.configs.consts import DEFAULT_GRAPH_RECURSION_LIMIT
 from src.infrastructure.graph.base_graph import BaseGraph
 from src.infrastructure.llm.llm_adapter import LLMAdapter
 from src.infrastructure.prompt.base_prompt_manager import BasePromptManager
@@ -22,7 +23,7 @@ class MockBaseGraph(BaseGraph):
         llm_adapter: LLMAdapter,
         prompt_builder: BasePromptManager,
         compiled_graph: CompiledStateGraph,
-        recursion_limit: int | None = None,
+        recursion_limit: int = DEFAULT_GRAPH_RECURSION_LIMIT,
         langfuse_handler: CallbackHandler | None = None,
     ) -> None:
         self._compiled_graph = compiled_graph

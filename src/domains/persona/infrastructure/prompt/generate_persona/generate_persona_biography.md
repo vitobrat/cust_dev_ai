@@ -13,6 +13,8 @@ Analyze the following blocks from the provided: `{demographic_attribute}`
 - **SocialBlock:** Use the location, education, and profession to set the "texture" of their life.
 - **PsychographicBehaviorBlock:** Use the profile, beliefs, tech adoption, and communication style to set the "voice" and "vibe" of the biography.
 
+Description of the customer segment to which the person belongs: `{segment_description}`
+
 ______________________________________________________________________
 
 ### Operating Guidelines

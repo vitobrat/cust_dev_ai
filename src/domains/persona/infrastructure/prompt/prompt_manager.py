@@ -73,12 +73,14 @@ class PersonaPromptManager(BasePromptManager):
     def build_generate_persona_biography_prompt(
         self,
         demographic_attributes: str,
+        segment_description: str,
     ) -> list[BaseMessage]:
         """Build the prompt for generating a persona biography based on the demographic attributes."""
         template = self.get_template("generate_persona", "generate_persona_biography.md")
 
         system_prompt = template.format(
             demographic_attributes=demographic_attributes,
+            segment_description=segment_description,
         )
         return [SystemMessage(content=system_prompt)]
 

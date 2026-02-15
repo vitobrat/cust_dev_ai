@@ -3,12 +3,18 @@ from typing import Any, Dict
 from langgraph.graph import END, START
 
 from src.configs.log.logger import get_logger
+from src.domains.persona.infrastructure.graph.graph_utils import (
+    get_demographic_attributes,
+    get_segment_description,
+    get_segment_name,
+)
 from src.domains.persona.infrastructure.prompt.prompt_manager import (
     PersonaPromptManager,
 )
 from src.domains.persona.schemas.generate_persona import (
     DemographicAttributePersona,
     GeneratePersonaSchema,
+    GeneratePersonasOutputSchema,
     PersonaSchema,
 )
 from src.infrastructure.graph.base_graph import BaseGraph
@@ -22,6 +28,7 @@ class GenerateSinglePersona(BaseGraph):
         """Initialize the graph with the necessary components."""
         super().__init__(
             state_schema=GeneratePersonaSchema,
+            output_schema=GeneratePersonasOutputSchema,
             **kwargs,
         )
         self._logger = get_logger(f"{__name__}.{self.__class__.__name__}")
@@ -44,19 +51,8 @@ class GenerateSinglePersona(BaseGraph):
 
     async def _generate_persona_attribute(self, state: GeneratePersonaSchema) -> Dict[str, Any]:
         """Create a demographic attribute person based on the input data."""
-        try:
-            segment_name = state["input_data"].segment_name
-        except KeyError as key_error:
-            self._logger.error(f"Segment_name not found in input_data: {key_error}")
-            raise ValueError("Segment_name is required in input_data to generate a demographic attribute person.")
-
-        try:
-            segment_description = state["input_data"].segment_description
-        except KeyError as key_error:
-            self._logger.error(f"Segment_description not found in input_data: {key_error}")
-            raise ValueError(
-                "Segment_description is required in input_data to generate a demographic attribute person.",
-            )
+        segment_name = get_segment_name(state)
+        segment_description = get_segment_description(state)
 
         prompt = self._prompt_builder.build_generate_persona_prompt(
             segment_name=segment_name,
@@ -74,22 +70,13 @@ class GenerateSinglePersona(BaseGraph):
 
     async def _generate_persona_biography(self, state: GeneratePersonaSchema) -> Dict[str, Any]:
         """Generate a biography for the persona based on the demographic attributes."""
-        try:
-            demographic_attributes = state["demographic_attributes"]
-        except KeyError as error:
-            self._logger.error(f"Demographic attributes not found in persona: {error}")
-            raise ValueError("Demographic attributes are required in persona to generate biography.")
+        demographic_attributes = get_demographic_attributes(state)
 
-        if not isinstance(demographic_attributes, DemographicAttributePersona):
-            self._logger.error(
-                f"Demographic attributes is not of type DemographicAttributePersona: {type(demographic_attributes)}",
-            )
-            raise ValueError(
-                "Demographic attributes must be of type DemographicAttributePersona to generate biography.",
-            )
+        segment_description = get_segment_description(state)
 
         prompt = self._prompt_builder.build_generate_persona_biography_prompt(
             demographic_attributes=demographic_attributes.demographic_info,
+            segment_description=segment_description,
         )
 
         response = await self._llm_adapter.ainvoke(prompt)
@@ -100,29 +87,13 @@ class GenerateSinglePersona(BaseGraph):
 
     async def _generate_persona_experiences(self, state: GeneratePersonaSchema) -> Dict[str, Any]:
         """Generate the experiences of the persona with the problem based on the demographic attributes."""
-        try:
-            demographic_attributes = state["demographic_attributes"]
-        except KeyError as error:
-            self._logger.error(f"Demographic attributes not found in persona: {error}")
-            raise ValueError("Demographic attributes are required in persona to generate experiences.")
+        demographic_attributes = get_demographic_attributes(state)
 
-        try:
-            segment_name = state["input_data"].segment_name
-        except KeyError as key_error:
-            self._logger.error(f"Segment_name not found in input_data: {key_error}")
-            raise ValueError("Segment_name is required in input_data to generate a demographic attribute person.")
-
-        if not isinstance(demographic_attributes, DemographicAttributePersona):
-            self._logger.error(
-                f"Demographic attributes is not of type DemographicAttributePersona: {type(demographic_attributes)}",
-            )
-            raise ValueError(
-                "Demographic attributes must be of type DemographicAttributePersona to generate experiences.",
-            )
+        segment_description = get_segment_description(state)
 
         prompt = self._prompt_builder.build_generate_persona_experiences_prompt(
             demographic_attributes=demographic_attributes.demographic_info,
-            segment_description=segment_name,
+            segment_description=segment_description,
         )
 
         response = await self._llm_adapter.ainvoke(prompt)
@@ -131,16 +102,12 @@ class GenerateSinglePersona(BaseGraph):
             "experiences": response,
         }
 
-    async def _format_output(self, state: GeneratePersonaSchema) -> Dict[str, Any]:
+    async def _format_output(self, state: GeneratePersonaSchema) -> GeneratePersonasOutputSchema:
         """
         Format the final output by combining demographic attributes, biography,
         and experiences into a structured persona.
         """
-        try:
-            demographic_attributes = state["demographic_attributes"]
-        except KeyError as error:
-            self._logger.error(f"Demographic attributes not found in persona: {error}")
-            raise ValueError("Demographic attributes are required in persona to format output.")
+        demographic_attributes = get_demographic_attributes(state)
 
         persona = PersonaSchema(
             demographic_attributes=demographic_attributes,

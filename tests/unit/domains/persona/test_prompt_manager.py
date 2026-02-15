@@ -73,10 +73,11 @@ def test_build_generate_persona_biography_prompt_returns_combined_attributes(
 ) -> None:
     """Verify that the biography prompt exposes demographic attributes verbatim."""
 
-    attributes = "Analytical, prefers async updates"
-    content = persona_prompt_manager.build_generate_persona_biography_prompt(attributes)[0].content
+    attributes = ("Analytical, prefers async updates", "segment description")
+    content = persona_prompt_manager.build_generate_persona_biography_prompt(*attributes)[0].content
 
-    assert content == "Biography narrative: Analytical, prefers async updates"
+    assert "Analytical, prefers async updates" in content
+    assert "segment description" in content
 
 
 def test_build_generate_persona_experiences_prompt_injects_description(

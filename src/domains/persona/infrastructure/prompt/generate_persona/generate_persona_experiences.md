@@ -22,10 +22,16 @@ Your narrative must naturally provide answers to these internal questions throug
 - **Focus on the 'Why':** Explain the root cause of the inertia (e.g., "I haven't fixed it because I'm terrified of losing my data in a cloud migration").
 - **Evidence of Value:** Show what the persona *could* do if the problem disappeared (e.g., "I could finally spend my Friday evenings with my kids instead of in Excel").
 
-### INPUT DATA
+### Input Data Processing
 
-- `demographics`: {demographics_json}
-- `segment_description`: {segment_description}
+Analyze the following blocks from the provided: `{demographic_attribute}`
+
+- **PersonalInfoBlock:** Extract name, age, gender, and marital context.
+- **ProblemBlock:** This is the **narrative climax**. Detail the specific problem, the spendings (time/money), the suffering, and the budget control.
+- **SocialBlock:** Use the location, education, and profession to set the "texture" of their life.
+- **PsychographicBehaviorBlock:** Use the profile, beliefs, tech adoption, and communication style to set the "voice" and "vibe" of the biography.
+
+Description of the customer segment to which the person belongs: `{segment_description}`
 
 ### REFERENCE EXAMPLE (For Tone and Depth)
 

@@ -11,7 +11,7 @@ from langfuse.langchain import CallbackHandler
 from langgraph.graph.state import CompiledStateGraph
 from pydantic import BaseModel
 
-from src.configs.consts import _DEFAULT_GRAPH_RECURSION_LIMIT
+from src.configs.consts import DEFAULT_GRAPH_RECURSION_LIMIT
 from src.infrastructure.graph.base_graph import GraphError
 from src.infrastructure.llm.llm_adapter import LLMAdapter
 from src.infrastructure.prompt.base_prompt_manager import BasePromptManager
@@ -32,7 +32,7 @@ def test_base_graph_initializes_dependencies_and_builds_graph(
     assert concrete_graph._prompt_builder is mock_prompt_builder
     assert concrete_graph.graph is mock_compiled_state_graph
     assert concrete_graph.configured is True
-    assert concrete_graph._recursion_limit == _DEFAULT_GRAPH_RECURSION_LIMIT
+    assert concrete_graph._recursion_limit == DEFAULT_GRAPH_RECURSION_LIMIT
 
 
 def test_base_graph_accepts_custom_recursion_limit(
