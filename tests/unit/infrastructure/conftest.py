@@ -1,6 +1,7 @@
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
+import instructor
 import pytest
 from langfuse.langchain import CallbackHandler
 from pydantic import BaseModel
@@ -57,6 +58,12 @@ def mock_base_graph() -> BaseGraph:
 def mock_prompt_builder() -> BasePromptManager:
     """Provide a mocked prompt builder for graph initialization."""
     return MagicMock(spec=BasePromptManager)
+
+
+@pytest.fixture
+def mock_instructor_client() -> instructor.AsyncInstructor:
+    mock_instructor_client = MagicMock()
+    return mock_instructor_client
 
 
 @pytest.fixture

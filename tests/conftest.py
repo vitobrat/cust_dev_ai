@@ -21,7 +21,9 @@ def container() -> RootContainer:
 @pytest.fixture
 def mock_llm() -> LLMProtocol:
     """Fixture providing a spec-based LLM mock instance."""
-    llm_mock = MagicMock(spec_set=LLMProtocol)
+    llm_mock = MagicMock(spec=LLMProtocol)
+    llm_mock.model_name = "gpt-4"
+    llm_mock.async_client = MagicMock()
     llm_mock.ainvoke = AsyncMock()
     llm_mock.astream = AsyncMock()
     llm_mock.bind_tools = MagicMock(return_value=llm_mock)
