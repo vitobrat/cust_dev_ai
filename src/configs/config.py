@@ -40,7 +40,7 @@ class PostgresDBConfigs(_BaseValidatedConfig):
 
     @computed_field
     @property
-    def DATABASE_URL(self) -> str:
+    def database_url(self) -> str:
         return f"postgresql+asyncpg://{self.user}:{self.password}@{self.host}:{self.port}/{self.db}"
 
 
