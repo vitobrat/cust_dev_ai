@@ -40,4 +40,4 @@ class ResponseBase(BaseModel):
 
     msg: Any = None
     details: Optional[str] = None
-    status: Literal['success', 'error'] = Field(..., description="Response status: 'success' or 'error'")
+    status: Literal["success", "error"] = Field(..., description="Response status: 'success' or 'error'")

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any, Generator
 from unittest.mock import MagicMock
 
 import pytest
@@ -32,10 +33,11 @@ from src.domains.persona.schemas.user_segment_search import (
     VerificationSegmentOutput,
 )
 from src.infrastructure.containers.root import RootContainer
+from src.infrastructure.llm.llm_adapter import LLMAdapter
 
 
 @pytest.fixture
-def user_segment_search_state():
+def user_segment_search_state() -> UserSegmentSearchSchema:
     return UserSegmentSearchSchema(
         input_data=InputData(user_prompt="user prompt"),
         analysis_result="analysis payload",
@@ -43,7 +45,7 @@ def user_segment_search_state():
 
 
 @pytest.fixture
-def user_segment_state():
+def user_segment_state() -> UserSegment:
     return UserSegment(
         segment_name="Automation Architects",
         segment_description="Focus on resilient pipelines",
@@ -54,7 +56,7 @@ def user_segment_state():
 
 
 @pytest.fixture
-def verification_state():
+def verification_state() -> VerificationSegmentOutput:
     return VerificationSegmentOutput(
         reasoning="Sound rationale",
         is_valid=True,
@@ -65,12 +67,12 @@ def verification_state():
 @pytest.fixture
 def user_segment_search_graph(
     container: RootContainer,
-    mock_llm_adapter,
-    mock_persona_prompt_builder,
-):
+    mock_llm_adapter: LLMAdapter,
+    mock_persona_prompt_builder: PersonaPromptManager,
+) -> Generator[Any, Any, Any]:
     with (
-        container.infrastructure.llm_adapter.override(mock_llm_adapter),
-        container.domain.persona.prompt_builder.override(mock_persona_prompt_builder),
+        container.infrastructure.llm_adapter.override(mock_llm_adapter),  # type: ignore[attr-defined]
+        container.domain.persona.prompt_builder.override(mock_persona_prompt_builder),  # type: ignore[attr-defined]
     ):
         yield container.domain.persona.user_segment_search_graph()
 
@@ -108,7 +110,8 @@ def prompt_payloads() -> dict[str, dict[str, str]]:
         },
         "generate_persona": {
             "generate_persona_output_example.md": "Persona generation output sample",
-            "generate_persona_biography.md": "Biography narrative: {demographic_attributes}, Segment description: {segment_description}",
+            "generate_persona_biography.md": "Biography narrative: {demographic_attributes}, "
+            "Segment description: {segment_description}",
             "generate_persona_experiences.md": (
                 "Experiences narrative: {demographic_attributes}, {segment_description}"
             ),
@@ -136,7 +139,7 @@ def fixture_persona_prompt_manager(
 def persona() -> DemographicAttributePersona:
     personal_info = PersonalInfoBlock(
         name="Alex",
-        age=34,
+        age=34,  # noqa: WPS432
         gender=Gender.MALE,
         marital_status="married",
     )
@@ -179,18 +182,21 @@ def generate_persona_input_data() -> BaseInputData:
 def generate_persona_state(generate_persona_input_data: BaseInputData) -> GeneratePersonaSchema:
     return GeneratePersonaSchema(
         input_data=generate_persona_input_data,
+        demographic_attributes=None,
+        biography=None,
+        experiences=None,
     )
 
 
 @pytest.fixture
 def generate_single_persona_graph(
     container: RootContainer,
-    mock_llm_adapter,
-    mock_persona_prompt_builder,
-):
+    mock_llm_adapter: LLMAdapter,
+    mock_persona_prompt_builder: PersonaPromptManager,
+) -> Generator[Any, Any, Any]:
     with (
-        container.infrastructure.llm_adapter.override(mock_llm_adapter),
-        container.domain.persona.prompt_builder.override(mock_persona_prompt_builder),
+        container.infrastructure.llm_adapter.override(mock_llm_adapter),  # type: ignore[attr-defined]
+        container.domain.persona.prompt_builder.override(mock_persona_prompt_builder),  # type: ignore[attr-defined]
     ):
         yield container.domain.persona.generate_single_persona_graph()
 
@@ -215,11 +221,11 @@ def generate_personas_state(generate_personas_input_data: GeneratePersonasInputD
 @pytest.fixture
 def generate_personas_graph(
     container: RootContainer,
-    mock_llm_adapter,
-    mock_persona_prompt_builder,
-):
+    mock_llm_adapter: LLMAdapter,
+    mock_persona_prompt_builder: PersonaPromptManager,
+) -> Generator[Any, Any, Any]:
     with (
-        container.infrastructure.llm_adapter.override(mock_llm_adapter),
-        container.domain.persona.prompt_builder.override(mock_persona_prompt_builder),
+        container.infrastructure.llm_adapter.override(mock_llm_adapter),  # type: ignore[attr-defined]
+        container.domain.persona.prompt_builder.override(mock_persona_prompt_builder),  # type: ignore[attr-defined]
     ):
         yield container.domain.persona.generate_personas_graph()

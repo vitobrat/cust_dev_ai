@@ -3,10 +3,8 @@
 import os
 from pathlib import Path
 
-import dotenv
-import yaml
 from omegaconf import OmegaConf
-from pydantic import Field
+from pydantic import Field, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from src.configs.consts import _DEFAULT_CONFIG_PATH, PROJECT_ROOT
@@ -33,6 +31,19 @@ class LoggerConfigs(_BaseValidatedConfig):
     )
 
 
+class PostgresDBConfigs(_BaseValidatedConfig):
+    user: str = Field(alias="POSTGRES_USER")
+    password: str = Field(alias="POSTGRES_PASSWORD")
+    host: str = Field(alias="POSTGRES_HOST")
+    port: int = Field(alias="POSTGRES_PORT")
+    db: str = Field(alias="POSTGRES_DB")
+
+    @computed_field
+    @property
+    def DATABASE_URL(self) -> str:
+        return f"postgresql+asyncpg://{self.user}:{self.password}@{self.host}:{self.port}/{self.db}"
+
+
 class BaseDomainConfig(_BaseValidatedConfig):
     prompts_dir: Path
     recursion_limit: int
@@ -57,21 +68,12 @@ class AppConfigs(_BaseValidatedConfig):
     logger: LoggerConfigs
     langgraph: LangGraphConfigs
     persona: PersonaConfig
+    postrger: PostgresDBConfigs
 
     @classmethod
     def init(cls) -> "AppConfigs":
-        dotenv.load_dotenv(dotenv_path)
-        config_path_str: str | None = os.getenv("CONFIG_PATH")
-        path: Path = Path(config_path_str) if config_path_str else _DEFAULT_CONFIG_PATH
-        config = OmegaConf.to_container(OmegaConf.load(path), resolve=True)
-        return cls(**config)
+        config_path_str = os.getenv("CONFIG_PATH")
+        path = Path(config_path_str) if config_path_str else _DEFAULT_CONFIG_PATH
+        yaml_config = OmegaConf.to_container(OmegaConf.load(path), resolve=True)
 
-    def export(self, path: Path) -> None:
-        """Export the current configuration to a YAML file."""
-        with open(path, "w") as output_file:
-            yaml.safe_dump(
-                self.model_dump(),
-                output_file,
-                default_flow_style=False,
-                sort_keys=False,
-            )
+        return cls(**yaml_config)

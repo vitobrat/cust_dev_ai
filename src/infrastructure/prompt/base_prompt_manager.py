@@ -67,13 +67,13 @@ class BasePromptManager:
         """
         if category not in self._prompts:
             self._logger.error(f"Category not found: {category}")
-            return ''
+            return ""
 
         if template_name not in self._prompts[category]:
             self._logger.error(
                 f"Template not found: {category}/{template_name}",
             )
-            return ''
+            return ""
 
         return self._prompts[category][template_name]
 
@@ -120,15 +120,15 @@ class BasePromptManager:
             A dictionary mapping template names to their content.
         """
         category_prompts = {}
-        for md_file in category_dir.glob('*.md'):
+        for md_file in category_dir.glob("*.md"):
             template_name = md_file.stem
             try:
-                prompt_content = md_file.read_text(encoding='utf-8')
+                prompt_content = md_file.read_text(encoding="utf-8")
             except (OSError, UnicodeDecodeError) as exc:
                 self._logger.warning(
                     f"Failed to load prompt {md_file}: {exc}",
                 )
-                prompt_content = ''
+                prompt_content = ""
             category_prompts[template_name] = prompt_content
 
         return category_prompts

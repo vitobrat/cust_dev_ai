@@ -322,9 +322,6 @@ class LLMAdapter:
             A Pydantic BaseModel subclass describing the expected output shape.
         max_retries
             Maximum number of attempts before raising RuntimeError.
-        retry_delay
-            Base delay in seconds between retries. Doubles on each attempt
-            (exponential backoff).
         **kwargs
             Extra arguments forwarded to the underlying LLM.
 

@@ -8,9 +8,6 @@ from langchain_core.messages import SystemMessage
 from src.domains.persona.infrastructure.graph.user_segment_search import (
     UserSegmentSearchGraph,
 )
-from src.domains.persona.infrastructure.prompt.prompt_manager import (
-    PersonaPromptManager,
-)
 from src.domains.persona.schemas.user_segment_search import (
     FindUserSegmentOutput,
     UserSegment,
@@ -18,17 +15,18 @@ from src.domains.persona.schemas.user_segment_search import (
     UserSegmentSearchSchema,
     VerificationSegmentOutput,
 )
-from src.infrastructure.llm.llm_adapter import LLMAdapter
+from src.infrastructure.containers.root import RootContainer
 
 
 @pytest.mark.asyncio
 async def test_analyse_user_prompt_updates_state(
+    container: RootContainer,
     user_segment_search_graph: UserSegmentSearchGraph,
-    mock_persona_prompt_builder: PersonaPromptManager,
-    mock_llm_adapter: LLMAdapter,
     user_segment_search_state: UserSegmentSearchSchema,
 ) -> None:
     """Ensure analyse node writes the LLM text into the shared state."""
+    mock_llm_adapter = container.infrastructure.llm_adapter()
+    mock_persona_prompt_builder = container.domain.persona.prompt_builder()
 
     await user_segment_search_graph._analyse_user_prompt(user_segment_search_state)
 
@@ -42,12 +40,13 @@ async def test_analyse_user_prompt_updates_state(
 
 @pytest.mark.asyncio
 async def test_find_user_segment_appends_history_item(
+    container: RootContainer,
     user_segment_search_graph: UserSegmentSearchGraph,
-    mock_persona_prompt_builder: PersonaPromptManager,
-    mock_llm_adapter: LLMAdapter,
     user_segment_search_state: UserSegmentSearchSchema,
 ) -> None:
     """Confirm the find node stores the structured response in history."""
+    mock_llm_adapter = container.infrastructure.llm_adapter()
+    mock_persona_prompt_builder = container.domain.persona.prompt_builder()
 
     structured_response = FindUserSegmentOutput(
         segment_name="CloudOps Leaders",
@@ -87,14 +86,15 @@ async def test_verify_user_segment_requires_history(
 
 @pytest.mark.asyncio
 async def test_verify_user_segment_sets_result(
+    container: RootContainer,
     user_segment_search_graph: UserSegmentSearchGraph,
-    mock_persona_prompt_builder: PersonaPromptManager,
-    mock_llm_adapter: LLMAdapter,
     user_segment_search_state: UserSegmentSearchSchema,
     user_segment_state: UserSegment,
     verification_state: VerificationSegmentOutput,
 ) -> None:
     """Verify node should populate the verification result on success."""
+    mock_llm_adapter = container.infrastructure.llm_adapter()
+    mock_persona_prompt_builder = container.domain.persona.prompt_builder()
 
     mock_llm_adapter.structured_ainvoke.return_value = verification_state
     user_segment_search_state.segments_history = [user_segment_state]
@@ -124,11 +124,11 @@ async def test_output_node_returns_final_segment(
 
     user_segment_search_state.segments_history = [user_segment_state]
 
-    result = await user_segment_search_graph._output_node(user_segment_search_state)
+    graph_result = await user_segment_search_graph._output_node(user_segment_search_state)
 
-    assert isinstance(result, UserSegmentSearchOutputSchema)
-    assert result.segment_name == "Automation Architects"
-    assert result.segment_description == "Focus on resilient pipelines"
+    assert isinstance(graph_result, UserSegmentSearchOutputSchema)
+    assert graph_result.segment_name == "Automation Architects"
+    assert graph_result.segment_description == "Focus on resilient pipelines"
 
 
 @pytest.mark.asyncio
