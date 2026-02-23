@@ -1,4 +1,5 @@
 # Переменные проекта
+PYTHONPATH_APP := .
 PYTHON := python3
 PYTEST := $(PYTHON) -m pytest
 DC_DEV := docker compose -f ./docker/docker-compose.dev.yaml
@@ -36,6 +37,13 @@ unit:
 integration:
 	$(PYTEST) -vv tests/integration
 
+## add_migration: Добавить автогенерируемую миграцию с помощью alembic (важно потом провалидировать правильность миграций!)
+add_migration:
+	PYTHONPATH=$(PYTHONPATH_APP) alembic revision --autogenerate
+
+## roll_up_migrations: Накатить на базу данных последнию добавленную миграцию
+roll_up_migrations:
+	PYTHONPATH=$(PYTHONPATH_APP) alembic upgrade head
 
 ## up: Запустить dev-окружение (подгружает .env автоматически через compose)
 up:

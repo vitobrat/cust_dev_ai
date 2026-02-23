@@ -18,7 +18,7 @@ class _BaseValidatedConfig(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=str(dotenv_path),
         env_file_encoding="utf-8",
-        extra="forbid",
+        extra="ignore",
         env_nested_delimiter="_",
     )
 
@@ -41,7 +41,13 @@ class PostgresDBConfigs(_BaseValidatedConfig):
     @computed_field
     @property
     def database_url(self) -> str:
-        return f"postgresql+asyncpg://{self.user}:{self.password}@{self.host}:{self.port}/{self.db}"
+        auth = f"{self.user}:{self.password}"
+        location = f"{self.host}:{self.port}"
+
+        driver = "postgresql+asyncpg"
+        query_params = "async_fallback=True"
+
+        return f"{driver}://{auth}@{location}/{self.db}?{query_params}"
 
 
 class BaseDomainConfig(_BaseValidatedConfig):
@@ -53,6 +59,12 @@ class LangGraphConfigs(_BaseValidatedConfig):
     """LangGraph configuration settings."""
 
     default_recursion_limit: int = Field(default=100, ge=1, description="Maximum recursion depth for graph generation.")
+
+
+class LangfuseConfigs(_BaseValidatedConfig):
+    base_url: str = Field(alias="LANGFUSE_BASE_URL")
+    public_key: str = Field(alias="LANGFUSE_PUBLIC_KEY")
+    secret_key: str = Field(alias="LANGFUSE_SECRET_KEY")
 
 
 class PersonaConfig(BaseDomainConfig):
@@ -68,7 +80,8 @@ class AppConfigs(_BaseValidatedConfig):
     logger: LoggerConfigs
     langgraph: LangGraphConfigs
     persona: PersonaConfig
-    postrger: PostgresDBConfigs
+    postgres: PostgresDBConfigs
+    langfuse: LangfuseConfigs
 
     @classmethod
     def init(cls) -> "AppConfigs":
