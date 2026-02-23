@@ -1,0 +1,114 @@
+"""Base repository module for PostgreSQL CRUD operations.
+
+This module provides an abstract base class for implementing repository pattern
+with SQLAlchemy async sessions.
+"""
+
+import uuid
+from abc import ABC, abstractmethod
+from typing import Generic, Optional, Type, TypeVar
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+ModelType = TypeVar("ModelType")
+CreateSchemaType = TypeVar("CreateSchemaType")
+UpdateSchemaType = TypeVar("UpdateSchemaType")
+EntityType = TypeVar("EntityType")
+
+
+class BaseCRUDRepository(ABC, Generic[ModelType, CreateSchemaType, UpdateSchemaType, EntityType]):
+    """Abstract base repository for CRUD operations on database entities.
+
+    This class provides a generic interface for Create, Read, Update, Delete operations
+    using SQLAlchemy ORM models and Pydantic schemas for data validation.
+
+    Type Parameters:
+        ModelType: SQLAlchemy ORM model type.
+        CreateSchemaType: Pydantic schema for entity creation.
+        UpdateSchemaType: Pydantic schema for entity updates.
+        EntityType: Pydantic schema representing the entity.
+
+    Attributes:
+        model: SQLAlchemy ORM model class associated with this repository.
+    """
+
+    model: Type[ModelType]
+
+    def __init__(self, session: AsyncSession) -> None:
+        """Initialize repository with database session.
+
+        Args:
+            session: SQLAlchemy async session for database operations.
+        """
+        self._session = session
+
+    @abstractmethod
+    async def create(self, create_data: CreateSchemaType) -> EntityType:
+        """Create a new entity in the database.
+
+        Args:
+            create_data: Schema containing data for entity creation.
+
+        Returns:
+            Created entity as a validated schema.
+        """
+        ...
+
+    @abstractmethod
+    async def get_by_id(self, entity_id: uuid.UUID) -> Optional[EntityType]:
+        """Retrieve an entity by its unique identifier.
+
+        Args:
+            entity_id: UUID of the entity to retrieve.
+
+        Returns:
+            Entity schema if found, None otherwise.
+        """
+        ...
+
+    @abstractmethod
+    async def get_all(self, limit: int = 100, offset: int = 0) -> list[EntityType]:
+        """Retrieve multiple entities with pagination.
+
+        Args:
+            limit: Maximum number of entities to return. Defaults to 100.
+            offset: Number of entities to skip. Defaults to 0.
+
+        Returns:
+            List of entity schemas.
+        """
+        ...
+
+    @abstractmethod
+    async def get_count(self) -> int:
+        """Get total count of entities in the repository.
+
+        Returns:
+            Total number of entities.
+        """
+        ...
+
+    @abstractmethod
+    async def update_by_id(self, entity_id: uuid.UUID, update_data: UpdateSchemaType) -> Optional[EntityType]:
+        """Update an existing entity by its identifier.
+
+        Args:
+            entity_id: UUID of the entity to update.
+            data: Schema containing update data.
+
+        Returns:
+            Updated entity schema if found, None otherwise.
+        """
+        ...
+
+    @abstractmethod
+    async def delete_by_id(self, entity_id: uuid.UUID) -> Optional[uuid.UUID]:
+        """Delete an entity by its identifier.
+
+        Args:
+            entity_id: UUID of the entity to delete.
+
+        Returns:
+            UUID of deleted entity if found, None otherwise.
+        """
+        ...
