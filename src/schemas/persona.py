@@ -56,10 +56,9 @@ class UpdatePersonasSchema(BaseModel):
     demographic_state: Optional[DemographicAttributePersona] = None
     bio_description: Optional[str] = Field(default=None, min_length=1)
     is_verified: Optional[bool] = None
-    interview_id: Optional[uuid.UUID] = None
 
 
-class PersonaEntitySchema(CreatePersonaSchema, VerboseBase):
+class PersonaEntitySchema(VerboseBase, CreatePersonaSchema):
     """Complete persona entity schema with metadata.
 
     This schema represents a full persona entity as stored in the database,

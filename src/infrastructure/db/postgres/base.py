@@ -4,9 +4,11 @@ import uuid
 from datetime import datetime, timezone
 from typing import Annotated
 
-from sqlalchemy import text
+from sqlalchemy import String, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import DeclarativeBase, mapped_column
+
+from src.configs.consts import USER_NAME_MAX_LENGTH
 
 uuidpk = Annotated[
     uuid.UUID,
@@ -39,6 +41,10 @@ updated_at = Annotated[
 Automatically updates on each record modification.
 """
 
+str256 = Annotated[str, 256]
+"""Type annotation for string with max length of 256.
+"""
+
 
 class Base(DeclarativeBase):
     """Base class for all SQLAlchemy ORM models.
@@ -50,6 +56,8 @@ class Base(DeclarativeBase):
         repr_cols_num: Number of columns to include in repr by default. Defaults to 3.
         repr_cols: Tuple of specific column names to always include in repr.
     """
+
+    type_annotation_map = {str256: String(USER_NAME_MAX_LENGTH)}
 
     repr_cols_num: int = 3
     repr_cols: tuple[str, ...] = tuple()

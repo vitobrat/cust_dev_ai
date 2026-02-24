@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy.orm import Mapped, relationship
 
-from src.infrastructure.db.postgres.base import Base, uuidpk
+from src.infrastructure.db.postgres.base import Base, str256, uuidpk
 
 if TYPE_CHECKING:
     from src.domains.interview.db.postgres.model import InterviewsOrm
@@ -29,6 +29,7 @@ class UsersOrm(Base):
     __tablename__ = "users"
 
     id: Mapped[uuidpk]
+    name: Mapped[str256]
 
     interviews: Mapped[list["InterviewsOrm"]] = relationship(
         back_populates="user",

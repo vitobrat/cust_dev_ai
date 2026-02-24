@@ -19,3 +19,7 @@ INSTRUCTOR_ROLE_MAP = types.MappingProxyType(
         "system": "system",
     },
 )
+
+URL_MAX_LENGTH = 2048
+
+USER_NAME_MAX_LENGTH = 256
