@@ -69,8 +69,8 @@ class PostgresDBConfigs(_BaseValidatedConfig):
     host: str = Field(alias="POSTGRES_HOST")
     port: int = Field(alias="POSTGRES_PORT")
     db: str = Field(alias="POSTGRES_DB")
-    pool_size: int
-    max_overflow: int
+    pool_size: int = 5
+    max_overflow: int = 10
     echo: bool = False
 
     @computed_field

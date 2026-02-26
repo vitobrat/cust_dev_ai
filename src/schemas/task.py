@@ -8,10 +8,10 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from src.domains.task.app.constants import TaskStatus, TaskType
-from src.schemas.api_base import VerboseBase
+from src.schemas.base import VerboseBase
 
 if TYPE_CHECKING:
     from src.schemas.user import UserEntitySchema
@@ -71,4 +71,8 @@ class TaskEntitySchema(VerboseBase, CreateTaskSchema):
     created_at: datetime
     updated_at: datetime
 
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TaskRelEntitySchema(TaskEntitySchema):
     user: "UserEntitySchema"

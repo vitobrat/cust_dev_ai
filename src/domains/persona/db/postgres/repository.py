@@ -13,13 +13,13 @@ from src.domains.persona.db.postgres.model import PersonasOrm
 from src.infrastructure.db.postgres.repository import BaseCRUDRepository
 from src.schemas.persona import (
     CreatePersonaSchema,
-    PersonaEntitySchema,
+    PersonaRelEntitySchema,
     UpdatePersonasSchema,
 )
 
 
 class PersonaRepository(
-    BaseCRUDRepository[PersonasOrm, CreatePersonaSchema, UpdatePersonasSchema, PersonaEntitySchema],
+    BaseCRUDRepository[PersonasOrm, CreatePersonaSchema, UpdatePersonasSchema, PersonaRelEntitySchema],
 ):
     """Repository for managing Persona entities in PostgreSQL.
 
@@ -36,7 +36,7 @@ class PersonaRepository(
     async def create(
         self,
         create_data: CreatePersonaSchema,
-    ) -> PersonaEntitySchema:
+    ) -> PersonaRelEntitySchema:
         """Create a new persona in the database.
 
         Args:
@@ -56,32 +56,32 @@ class PersonaRepository(
         await self._session.flush()
         await self._session.refresh(persona)
 
-        return PersonaEntitySchema.model_validate(persona)
+        return PersonaRelEntitySchema.model_validate(persona)
 
     async def get_by_id(
         self,
         entity_id: uuid.UUID,
-    ) -> Optional[PersonaEntitySchema]:
-        """Retrieve a persona by its unique identifier.
+    ) -> Optional[PersonaRelEntitySchema]:
+        """Retrieve a persona by its unique identifier with related interview.
 
         Args:
             entity_id: UUID of the persona to retrieve.
 
         Returns:
-            Persona entity if found, None otherwise.
+            Persona entity with loaded interview relation if found, None otherwise.
         """
         persona = await self._session.get(PersonasOrm, entity_id)
 
         if persona is None:
             return None
 
-        return PersonaEntitySchema.model_validate(persona)
+        return PersonaRelEntitySchema.model_validate(persona)
 
     async def get_all(
         self,
         limit: int = 100,
         offset: int = 0,
-    ) -> list[PersonaEntitySchema]:
+    ) -> list[PersonaRelEntitySchema]:
         """Retrieve multiple personas with pagination support.
 
         Args:
@@ -95,7 +95,7 @@ class PersonaRepository(
         persona_result = await self._session.execute(query)
         personas = persona_result.scalars().all()
 
-        return [PersonaEntitySchema.model_validate(persona) for persona in personas]
+        return [PersonaRelEntitySchema.model_validate(persona) for persona in personas]
 
     async def get_count(self) -> int:
         """Get total count of personas in the database.
@@ -112,7 +112,7 @@ class PersonaRepository(
         self,
         entity_id: uuid.UUID,
         update_data: UpdatePersonasSchema,
-    ) -> Optional[PersonaEntitySchema]:
+    ) -> Optional[PersonaRelEntitySchema]:
         """Update an existing persona by its identifier.
 
         Only fields present in update_data (exclude_unset=True) will be modified.
@@ -132,12 +132,15 @@ class PersonaRepository(
         update_fields = update_data.model_dump(exclude_unset=True)
 
         for field, persona_value in update_fields.items():
-            setattr(persona, field, persona_value)
+            if field == "demographic_state" and persona_value is not None:
+                setattr(persona, field, persona_value.model_dump())
+            else:
+                setattr(persona, field, persona_value)
 
         await self._session.flush()
         await self._session.refresh(persona)
 
-        return PersonaEntitySchema.model_validate(persona)
+        return PersonaRelEntitySchema.model_validate(persona)
 
     async def delete_by_id(
         self,

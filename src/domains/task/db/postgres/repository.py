@@ -13,12 +13,12 @@ from src.domains.task.db.postgres.model import TasksOrm
 from src.infrastructure.db.postgres.repository import BaseCRUDRepository
 from src.schemas.task import (
     CreateTaskSchema,
-    TaskEntitySchema,
+    TaskRelEntitySchema,
     UpdateTaskSchema,
 )
 
 
-class TaskRepository(BaseCRUDRepository[TasksOrm, CreateTaskSchema, UpdateTaskSchema, TaskEntitySchema]):
+class TaskRepository(BaseCRUDRepository[TasksOrm, CreateTaskSchema, UpdateTaskSchema, TaskRelEntitySchema]):
     """Repository for task entity CRUD operations.
 
     Provides async methods for creating, reading, updating, and deleting task records
@@ -28,7 +28,7 @@ class TaskRepository(BaseCRUDRepository[TasksOrm, CreateTaskSchema, UpdateTaskSc
     async def create(
         self,
         create_data: CreateTaskSchema,
-    ) -> TaskEntitySchema:
+    ) -> TaskRelEntitySchema:
         """Create a new task record.
 
         Args:
@@ -53,19 +53,19 @@ class TaskRepository(BaseCRUDRepository[TasksOrm, CreateTaskSchema, UpdateTaskSc
         await self._session.flush()
         await self._session.refresh(task)
 
-        return TaskEntitySchema.model_validate(task)
+        return TaskRelEntitySchema.model_validate(task)
 
     async def get_by_id(
         self,
         entity_id: uuid.UUID,
-    ) -> Optional[TaskEntitySchema]:
-        """Retrieve a task by its ID.
+    ) -> Optional[TaskRelEntitySchema]:
+        """Retrieve a task by its ID with related entities.
 
         Args:
             entity_id: UUID of the task to retrieve.
 
         Returns:
-            Task entity if found, None otherwise.
+            Task entity with loaded relations if found, None otherwise.
 
         Raises:
             SQLAlchemyError: If database operation fails.
@@ -75,13 +75,13 @@ class TaskRepository(BaseCRUDRepository[TasksOrm, CreateTaskSchema, UpdateTaskSc
         if task is None:
             return None
 
-        return TaskEntitySchema.model_validate(task)
+        return TaskRelEntitySchema.model_validate(task)
 
     async def get_all(
         self,
         limit: int = 100,
         offset: int = 0,
-    ) -> list[TaskEntitySchema]:
+    ) -> list[TaskRelEntitySchema]:
         """Retrieve all tasks with pagination.
 
         Args:
@@ -98,7 +98,7 @@ class TaskRepository(BaseCRUDRepository[TasksOrm, CreateTaskSchema, UpdateTaskSc
         tasks_result = await self._session.execute(query)
         tasks = tasks_result.scalars().all()
 
-        return [TaskEntitySchema.model_validate(task) for task in tasks]
+        return [TaskRelEntitySchema.model_validate(task) for task in tasks]
 
     async def get_count(self) -> int:
         """Get total count of tasks in the database.
@@ -118,7 +118,7 @@ class TaskRepository(BaseCRUDRepository[TasksOrm, CreateTaskSchema, UpdateTaskSc
         self,
         entity_id: uuid.UUID,
         update_data: UpdateTaskSchema,
-    ) -> Optional[TaskEntitySchema]:
+    ) -> Optional[TaskRelEntitySchema]:
         """Update a task by its ID.
 
         Only fields present in update_data will be modified.
@@ -146,7 +146,7 @@ class TaskRepository(BaseCRUDRepository[TasksOrm, CreateTaskSchema, UpdateTaskSc
         await self._session.flush()
         await self._session.refresh(task)
 
-        return TaskEntitySchema.model_validate(task)
+        return TaskRelEntitySchema.model_validate(task)
 
     async def delete_by_id(
         self,

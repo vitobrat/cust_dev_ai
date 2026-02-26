@@ -13,10 +13,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 ModelType = TypeVar("ModelType")
 CreateSchemaType = TypeVar("CreateSchemaType")
 UpdateSchemaType = TypeVar("UpdateSchemaType")
-EntityType = TypeVar("EntityType")
+RelEntityType = TypeVar("RelEntityType")
 
 
-class BaseCRUDRepository(ABC, Generic[ModelType, CreateSchemaType, UpdateSchemaType, EntityType]):
+class BaseCRUDRepository(ABC, Generic[ModelType, CreateSchemaType, UpdateSchemaType, RelEntityType]):
     """Abstract base repository for CRUD operations on database entities.
 
     This class provides a generic interface for Create, Read, Update, Delete operations
@@ -43,7 +43,7 @@ class BaseCRUDRepository(ABC, Generic[ModelType, CreateSchemaType, UpdateSchemaT
         self._session = session
 
     @abstractmethod
-    async def create(self, create_data: CreateSchemaType) -> EntityType:
+    async def create(self, create_data: CreateSchemaType) -> RelEntityType:
         """Create a new entity in the database.
 
         Args:
@@ -55,7 +55,7 @@ class BaseCRUDRepository(ABC, Generic[ModelType, CreateSchemaType, UpdateSchemaT
         ...
 
     @abstractmethod
-    async def get_by_id(self, entity_id: uuid.UUID) -> Optional[EntityType]:
+    async def get_by_id(self, entity_id: uuid.UUID) -> Optional[RelEntityType]:
         """Retrieve an entity by its unique identifier.
 
         Args:
@@ -67,7 +67,7 @@ class BaseCRUDRepository(ABC, Generic[ModelType, CreateSchemaType, UpdateSchemaT
         ...
 
     @abstractmethod
-    async def get_all(self, limit: int = 100, offset: int = 0) -> list[EntityType]:
+    async def get_all(self, limit: int = 100, offset: int = 0) -> list[RelEntityType]:
         """Retrieve multiple entities with pagination.
 
         Args:
@@ -89,7 +89,7 @@ class BaseCRUDRepository(ABC, Generic[ModelType, CreateSchemaType, UpdateSchemaT
         ...
 
     @abstractmethod
-    async def update_by_id(self, entity_id: uuid.UUID, update_data: UpdateSchemaType) -> Optional[EntityType]:
+    async def update_by_id(self, entity_id: uuid.UUID, update_data: UpdateSchemaType) -> Optional[RelEntityType]:
         """Update an existing entity by its identifier.
 
         Args:

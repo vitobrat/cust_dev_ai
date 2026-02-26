@@ -13,13 +13,13 @@ from src.domains.interview.db.postgres.model import InterviewsOrm
 from src.infrastructure.db.postgres.repository import BaseCRUDRepository
 from src.schemas.interview import (
     CreateInterviewSchema,
-    InterviewEntitySchema,
+    InterviewRelEntitySchema,
     UpdateInterviewSchema,
 )
 
 
 class InterviewRepository(
-    BaseCRUDRepository[InterviewsOrm, CreateInterviewSchema, UpdateInterviewSchema, InterviewEntitySchema],
+    BaseCRUDRepository[InterviewsOrm, CreateInterviewSchema, UpdateInterviewSchema, InterviewRelEntitySchema],
 ):
     """Repository for interview entity CRUD operations.
 
@@ -30,7 +30,7 @@ class InterviewRepository(
     async def create(
         self,
         create_data: CreateInterviewSchema,
-    ) -> InterviewEntitySchema:
+    ) -> InterviewRelEntitySchema:
         """Create a new interview record.
 
         Args:
@@ -51,19 +51,19 @@ class InterviewRepository(
         await self._session.flush()
         await self._session.refresh(interview)
 
-        return InterviewEntitySchema.model_validate(interview)
+        return InterviewRelEntitySchema.model_validate(interview)
 
     async def get_by_id(
         self,
         entity_id: uuid.UUID,
-    ) -> Optional[InterviewEntitySchema]:
-        """Retrieve an interview by its ID.
+    ) -> Optional[InterviewRelEntitySchema]:
+        """Retrieve an interview by its ID with related entities.
 
         Args:
             entity_id: UUID of the interview to retrieve.
 
         Returns:
-            Interview entity if found, None otherwise.
+            Interview entity with loaded relations if found, None otherwise.
 
         Raises:
             SQLAlchemyError: If database operation fails.
@@ -73,13 +73,13 @@ class InterviewRepository(
         if interview is None:
             return None
 
-        return InterviewEntitySchema.model_validate(interview)
+        return InterviewRelEntitySchema.model_validate(interview)
 
     async def get_all(
         self,
         limit: int = 100,
         offset: int = 0,
-    ) -> list[InterviewEntitySchema]:
+    ) -> list[InterviewRelEntitySchema]:
         """Retrieve all interviews with pagination.
 
         Args:
@@ -96,7 +96,7 @@ class InterviewRepository(
         interviews_result = await self._session.execute(query)
         interviews = interviews_result.scalars().all()
 
-        return [InterviewEntitySchema.model_validate(interview) for interview in interviews]
+        return [InterviewRelEntitySchema.model_validate(interview) for interview in interviews]
 
     async def get_count(self) -> int:
         """Get total count of interviews in the database.
@@ -116,7 +116,7 @@ class InterviewRepository(
         self,
         entity_id: uuid.UUID,
         update_data: UpdateInterviewSchema,
-    ) -> Optional[InterviewEntitySchema]:
+    ) -> Optional[InterviewRelEntitySchema]:
         """Update an interview by its ID.
 
         Only fields present in update_data will be modified.
@@ -144,7 +144,7 @@ class InterviewRepository(
         await self._session.flush()
         await self._session.refresh(interview)
 
-        return InterviewEntitySchema.model_validate(interview)
+        return InterviewRelEntitySchema.model_validate(interview)
 
     async def delete_by_id(
         self,

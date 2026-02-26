@@ -8,10 +8,10 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from src.configs.consts import URL_MAX_LENGTH
-from src.schemas.api_base import VerboseBase
+from src.schemas.base import VerboseBase
 
 if TYPE_CHECKING:
     from src.schemas.persona import PersonaEntitySchema
@@ -59,6 +59,10 @@ class InterviewEntitySchema(VerboseBase, CreateInterviewSchema):
     created_at: datetime
     updated_at: datetime
 
+    model_config = ConfigDict(from_attributes=True)
+
+
+class InterviewRelEntitySchema(InterviewEntitySchema):
     user: "UserEntitySchema"
     personas: list["PersonaEntitySchema"] = []
     sub_interviews: list["SubInterviewEntitySchema"] = []

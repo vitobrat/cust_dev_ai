@@ -1,7 +1,7 @@
 """Base SQLAlchemy models and type annotations for PostgreSQL."""
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Annotated
 
 from sqlalchemy import String, text
@@ -33,7 +33,7 @@ updated_at = Annotated[
     datetime,
     mapped_column(
         server_default=text("TIMEZONE('utc', now())"),
-        onupdate=lambda: datetime.now(timezone.utc),
+        onupdate=datetime.utcnow,
     ),
 ]
 """Type annotation for update timestamp with automatic UTC timezone.

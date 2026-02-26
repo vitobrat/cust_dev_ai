@@ -13,13 +13,18 @@ from src.domains.sub_interview.db.postgres.model import SubInterviewsOrm
 from src.infrastructure.db.postgres.repository import BaseCRUDRepository
 from src.schemas.sub_interview import (
     CreateSubInterviewSchema,
-    SubInterviewEntitySchema,
+    SubInterviewRelEntitySchema,
     UpdateSubInterviewSchema,
 )
 
 
 class SubInterviewRepository(
-    BaseCRUDRepository[SubInterviewsOrm, CreateSubInterviewSchema, UpdateSubInterviewSchema, SubInterviewEntitySchema],
+    BaseCRUDRepository[
+        SubInterviewsOrm,
+        CreateSubInterviewSchema,
+        UpdateSubInterviewSchema,
+        SubInterviewRelEntitySchema,
+    ],
 ):
     """Repository for sub-interview entity CRUD operations.
 
@@ -30,7 +35,7 @@ class SubInterviewRepository(
     async def create(
         self,
         create_data: CreateSubInterviewSchema,
-    ) -> SubInterviewEntitySchema:
+    ) -> SubInterviewRelEntitySchema:
         """Create a new sub-interview record.
 
         Args:
@@ -52,19 +57,19 @@ class SubInterviewRepository(
         await self._session.flush()
         await self._session.refresh(sub_interview)
 
-        return SubInterviewEntitySchema.model_validate(sub_interview)
+        return SubInterviewRelEntitySchema.model_validate(sub_interview)
 
     async def get_by_id(
         self,
         entity_id: uuid.UUID,
-    ) -> Optional[SubInterviewEntitySchema]:
-        """Retrieve a sub-interview by its ID.
+    ) -> Optional[SubInterviewRelEntitySchema]:
+        """Retrieve a sub-interview by its ID with related entities.
 
         Args:
             entity_id: UUID of the sub-interview to retrieve.
 
         Returns:
-            Sub-interview entity if found, None otherwise.
+            Sub-interview entity with loaded relations if found, None otherwise.
 
         Raises:
             SQLAlchemyError: If database operation fails.
@@ -74,13 +79,13 @@ class SubInterviewRepository(
         if sub_interview is None:
             return None
 
-        return SubInterviewEntitySchema.model_validate(sub_interview)
+        return SubInterviewRelEntitySchema.model_validate(sub_interview)
 
     async def get_all(
         self,
         limit: int = 100,
         offset: int = 0,
-    ) -> list[SubInterviewEntitySchema]:
+    ) -> list[SubInterviewRelEntitySchema]:
         """Retrieve all sub-interviews with pagination.
 
         Args:
@@ -97,7 +102,7 @@ class SubInterviewRepository(
         sub_interviews_result = await self._session.execute(query)
         sub_interviews = sub_interviews_result.scalars().all()
 
-        return [SubInterviewEntitySchema.model_validate(sub_interview) for sub_interview in sub_interviews]
+        return [SubInterviewRelEntitySchema.model_validate(sub_interview) for sub_interview in sub_interviews]
 
     async def get_count(self) -> int:
         """Get total count of sub-interviews in the database.
@@ -117,7 +122,7 @@ class SubInterviewRepository(
         self,
         entity_id: uuid.UUID,
         update_data: UpdateSubInterviewSchema,
-    ) -> Optional[SubInterviewEntitySchema]:
+    ) -> Optional[SubInterviewRelEntitySchema]:
         """Update a sub-interview by its ID.
 
         Only fields present in update_data will be modified.
@@ -145,7 +150,7 @@ class SubInterviewRepository(
         await self._session.flush()
         await self._session.refresh(sub_interview)
 
-        return SubInterviewEntitySchema.model_validate(sub_interview)
+        return SubInterviewRelEntitySchema.model_validate(sub_interview)
 
     async def delete_by_id(
         self,

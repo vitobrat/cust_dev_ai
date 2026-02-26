@@ -8,10 +8,10 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from src.domains.sub_interview.app.constants import SubInterviewStatus
-from src.schemas.api_base import VerboseBase
+from src.schemas.base import VerboseBase
 
 if TYPE_CHECKING:
     from src.schemas.interview import InterviewEntitySchema
@@ -57,4 +57,8 @@ class SubInterviewEntitySchema(VerboseBase, CreateSubInterviewSchema):
 
     created_at: datetime
 
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SubInterviewRelEntitySchema(SubInterviewEntitySchema):
     interview: "InterviewEntitySchema"

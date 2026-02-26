@@ -7,15 +7,17 @@ and type safety.
 
 import uuid
 from datetime import datetime
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from src.domains.persona.schemas.generate_persona.demographic_persona import (
     DemographicAttributePersona,
 )
-from src.schemas.api_base import VerboseBase
-from src.schemas.interview import InterviewEntitySchema
+from src.schemas.base import VerboseBase
+
+if TYPE_CHECKING:
+    from src.schemas.interview import InterviewEntitySchema
 
 
 class CreatePersonaSchema(BaseModel):
@@ -77,6 +79,9 @@ class PersonaEntitySchema(VerboseBase, CreatePersonaSchema):
 
     created_at: datetime
     updated_at: datetime
-    interview: InterviewEntitySchema
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class PersonaRelEntitySchema(PersonaEntitySchema):
+    interview: "InterviewEntitySchema"

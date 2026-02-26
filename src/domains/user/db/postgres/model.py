@@ -21,9 +21,7 @@ class UsersOrm(Base):
     Attributes:
         id: Unique identifier (UUID).
         interviews: List of InterviewsOrm instances owned by this user.
-            Must be explicitly loaded (lazy='raise').
         tasks: List of TasksOrm instances owned by this user.
-            Must be explicitly loaded (lazy='raise').
     """
 
     __tablename__ = "users"
@@ -33,10 +31,10 @@ class UsersOrm(Base):
 
     interviews: Mapped[list["InterviewsOrm"]] = relationship(
         back_populates="user",
-        lazy="raise",
+        lazy="selectin",
     )
 
     tasks: Mapped[list["TasksOrm"]] = relationship(
         back_populates="user",
-        lazy="raise",
+        lazy="selectin",
     )

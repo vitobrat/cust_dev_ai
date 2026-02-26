@@ -14,11 +14,11 @@ from src.infrastructure.db.postgres.repository import BaseCRUDRepository
 from src.schemas.user import (
     CreateUserSchema,
     UpdateUserSchema,
-    UserEntitySchema,
+    UserRelEntitySchema,
 )
 
 
-class UserRepository(BaseCRUDRepository[UsersOrm, CreateUserSchema, UpdateUserSchema, UserEntitySchema]):
+class UserRepository(BaseCRUDRepository[UsersOrm, CreateUserSchema, UpdateUserSchema, UserRelEntitySchema]):
     """Repository for user entity CRUD operations.
 
     Provides async methods for creating, reading, updating, and deleting user records
@@ -28,7 +28,7 @@ class UserRepository(BaseCRUDRepository[UsersOrm, CreateUserSchema, UpdateUserSc
     async def create(
         self,
         create_data: CreateUserSchema,
-    ) -> UserEntitySchema:
+    ) -> UserRelEntitySchema:
         """Create a new user record.
 
         Args:
@@ -48,19 +48,19 @@ class UserRepository(BaseCRUDRepository[UsersOrm, CreateUserSchema, UpdateUserSc
         await self._session.flush()
         await self._session.refresh(user)
 
-        return UserEntitySchema.model_validate(user)
+        return UserRelEntitySchema.model_validate(user)
 
     async def get_by_id(
         self,
         entity_id: uuid.UUID,
-    ) -> Optional[UserEntitySchema]:
-        """Retrieve a user by its ID.
+    ) -> Optional[UserRelEntitySchema]:
+        """Retrieve a user by its ID with related entities.
 
         Args:
             entity_id: UUID of the user to retrieve.
 
         Returns:
-            User entity if found, None otherwise.
+            User entity with loaded relations if found, None otherwise.
 
         Raises:
             SQLAlchemyError: If database operation fails.
@@ -70,13 +70,13 @@ class UserRepository(BaseCRUDRepository[UsersOrm, CreateUserSchema, UpdateUserSc
         if user is None:
             return None
 
-        return UserEntitySchema.model_validate(user)
+        return UserRelEntitySchema.model_validate(user)
 
     async def get_all(
         self,
         limit: int = 100,
         offset: int = 0,
-    ) -> list[UserEntitySchema]:
+    ) -> list[UserRelEntitySchema]:
         """Retrieve all users with pagination.
 
         Args:
@@ -93,7 +93,7 @@ class UserRepository(BaseCRUDRepository[UsersOrm, CreateUserSchema, UpdateUserSc
         users_result = await self._session.execute(query)
         users = users_result.scalars().all()
 
-        return [UserEntitySchema.model_validate(user) for user in users]
+        return [UserRelEntitySchema.model_validate(user) for user in users]
 
     async def get_count(self) -> int:
         """Get total count of users in the database.
@@ -113,7 +113,7 @@ class UserRepository(BaseCRUDRepository[UsersOrm, CreateUserSchema, UpdateUserSc
         self,
         entity_id: uuid.UUID,
         update_data: UpdateUserSchema,
-    ) -> Optional[UserEntitySchema]:
+    ) -> Optional[UserRelEntitySchema]:
         """Update a user by its ID.
 
         Only fields present in update_data will be modified.
@@ -141,7 +141,7 @@ class UserRepository(BaseCRUDRepository[UsersOrm, CreateUserSchema, UpdateUserSc
         await self._session.flush()
         await self._session.refresh(user)
 
-        return UserEntitySchema.model_validate(user)
+        return UserRelEntitySchema.model_validate(user)
 
     async def delete_by_id(
         self,

@@ -16,9 +16,10 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-postgres_configs = PostgresDBConfigs()
-
-config.set_main_option("sqlalchemy.url", postgres_configs.database_url)
+_url = config.get_main_option("sqlalchemy.url")
+if not _url or _url == "driver://user:pass@localhost/dbname":
+    postgres_configs = PostgresDBConfigs()
+    config.set_main_option("sqlalchemy.url", postgres_configs.database_url)
 
 
 def load_all_models() -> None:

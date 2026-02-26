@@ -5,6 +5,7 @@ application's public API. They provide a consistent structure for response
 payloads and optional identifiers.
 """
 
+import uuid
 from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field
@@ -18,7 +19,7 @@ class VerboseBase(BaseModel):
             has not been persisted or the identifier is not applicable.
     """
 
-    id: Optional[int]
+    id: Optional[uuid.UUID]
 
 
 class ResponseBase(BaseModel):

@@ -6,10 +6,10 @@ Users are the primary actors in the system who create interviews and tasks.
 
 from typing import TYPE_CHECKING, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from src.configs.consts import USER_NAME_MAX_LENGTH
-from src.schemas.api_base import VerboseBase
+from src.schemas.base import VerboseBase
 
 if TYPE_CHECKING:
     from src.schemas.interview import InterviewEntitySchema
@@ -48,5 +48,9 @@ class UserEntitySchema(VerboseBase, CreateUserSchema):
         tasks: List of tasks created by this user.
     """
 
+    model_config = ConfigDict(from_attributes=True)
+
+
+class UserRelEntitySchema(UserEntitySchema):
     interviews: list["InterviewEntitySchema"] = []
     tasks: list["TaskEntitySchema"] = []
