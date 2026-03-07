@@ -13,13 +13,10 @@ from langgraph.graph.state import CompiledStateGraph
 
 from src.configs.consts import DEFAULT_GRAPH_RECURSION_LIMIT
 from src.configs.log.logger import get_logger
+from src.infrastructure.exceptions import GraphError
 from src.infrastructure.llm.llm_adapter import LLMAdapter
 from src.infrastructure.prompt.base_prompt_manager import BasePromptManager
 from src.schemas.base import Schema
-
-
-class GraphError(Exception):
-    """Base exception for graph-related errors."""
 
 
 class BaseGraph(StateGraph, ABC):

@@ -6,7 +6,7 @@ import pytest
 from langgraph.types import Send
 
 from src.domains.persona.infrastructure.graph.generate_personas import (
-    GeneratePersonas,
+    GeneratePersonasGraph,
 )
 from src.domains.persona.schemas.generate_persona import (
     BaseInputData,
@@ -16,7 +16,7 @@ from src.domains.persona.schemas.generate_persona import (
 
 @pytest.mark.asyncio
 async def test_map_personas_creates_correct_number_of_sends(
-    generate_personas_graph: GeneratePersonas,
+    generate_personas_graph: GeneratePersonasGraph,
     generate_personas_state: GeneratePersonasSchema,
 ) -> None:
     """Ensure map_personas creates Send objects for each persona count."""
@@ -31,7 +31,7 @@ async def test_map_personas_creates_correct_number_of_sends(
 
 @pytest.mark.asyncio
 async def test_map_personas_propagates_segment_data(
-    generate_personas_graph: GeneratePersonas,
+    generate_personas_graph: GeneratePersonasGraph,
     generate_personas_state: GeneratePersonasSchema,
 ) -> None:
     """Confirm map_personas passes segment name and description to each Send."""
@@ -49,7 +49,7 @@ async def test_map_personas_propagates_segment_data(
 
 @pytest.mark.asyncio
 async def test_map_personas_defaults_to_one_when_count_missing(
-    generate_personas_graph: GeneratePersonas,
+    generate_personas_graph: GeneratePersonasGraph,
     generate_personas_state: GeneratePersonasSchema,
 ) -> None:
     """Map personas should default to 1 persona when person_count is missing."""
@@ -63,7 +63,7 @@ async def test_map_personas_defaults_to_one_when_count_missing(
 
 @pytest.mark.asyncio
 async def test_map_personas_requires_segment_name(
-    generate_personas_graph: GeneratePersonas,
+    generate_personas_graph: GeneratePersonasGraph,
     generate_personas_state: GeneratePersonasSchema,
 ) -> None:
     """Map personas should reject empty segment_name."""
@@ -76,7 +76,7 @@ async def test_map_personas_requires_segment_name(
 
 @pytest.mark.asyncio
 async def test_map_personas_requires_segment_description(
-    generate_personas_graph: GeneratePersonas,
+    generate_personas_graph: GeneratePersonasGraph,
     generate_personas_state: GeneratePersonasSchema,
 ) -> None:
     """Map personas should reject empty segment_description."""
@@ -89,7 +89,7 @@ async def test_map_personas_requires_segment_description(
 
 @pytest.mark.asyncio
 async def test_map_personas_handles_large_counts(
-    generate_personas_graph: GeneratePersonas,
+    generate_personas_graph: GeneratePersonasGraph,
     generate_personas_state: GeneratePersonasSchema,
 ) -> None:
     """Verify map_personas can handle larger persona counts."""
@@ -106,7 +106,7 @@ async def test_map_personas_handles_large_counts(
 
 @pytest.mark.asyncio
 async def test_map_personas_creates_independent_send_objects(
-    generate_personas_graph: GeneratePersonas,
+    generate_personas_graph: GeneratePersonasGraph,
     generate_personas_state: GeneratePersonasSchema,
 ) -> None:
     """Ensure each Send object has independent input_data instances."""

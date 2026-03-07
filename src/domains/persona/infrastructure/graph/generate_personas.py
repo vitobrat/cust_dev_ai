@@ -5,7 +5,7 @@ from langgraph.types import Send
 
 from src.configs.log.logger import get_logger
 from src.domains.persona.infrastructure.graph.generate_single_persona import (
-    GenerateSinglePersona,
+    GenerateSinglePersonaGraph,
 )
 from src.domains.persona.infrastructure.graph.graph_utils import (
     get_person_count,
@@ -23,11 +23,11 @@ from src.domains.persona.schemas.generate_persona import (
 from src.infrastructure.graph.base_graph import BaseGraph
 
 
-class GeneratePersonas(BaseGraph):
+class GeneratePersonasGraph(BaseGraph):
 
     _prompt_builder: PersonaPromptManager
 
-    def __init__(self, sub_graph: GenerateSinglePersona, **kwargs: Any) -> None:
+    def __init__(self, sub_graph: GenerateSinglePersonaGraph, **kwargs: Any) -> None:
         """Initialize the graph with the necessary components."""
         self._sub_graph_generate_single_persona = sub_graph
 

@@ -79,13 +79,13 @@ class PersonaRepository(
 
     async def get_all(
         self,
-        limit: int = 100,
+        limit: int = 10,
         offset: int = 0,
     ) -> list[PersonaRelEntitySchema]:
         """Retrieve multiple personas with pagination support.
 
         Args:
-            limit: Maximum number of personas to return. Defaults to 100.
+            limit: Maximum number of personas to return. Defaults to 10.
             offset: Number of personas to skip. Defaults to 0.
 
         Returns:
@@ -131,11 +131,8 @@ class PersonaRepository(
 
         update_fields = update_data.model_dump(exclude_unset=True)
 
-        for field, persona_value in update_fields.items():
-            if field == "demographic_state" and persona_value is not None:
-                setattr(persona, field, persona_value.model_dump())
-            else:
-                setattr(persona, field, persona_value)
+        for field, field_value in update_fields.items():
+            setattr(persona, field, field_value)
 
         await self._session.flush()
         await self._session.refresh(persona)

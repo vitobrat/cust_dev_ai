@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any, Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 from src.domains.task.app.constants import TaskStatus, TaskType
-from src.schemas.base import VerboseBase
+from src.schemas.api_base import VerboseBase
 
 if TYPE_CHECKING:
     from src.schemas.user import UserEntitySchema

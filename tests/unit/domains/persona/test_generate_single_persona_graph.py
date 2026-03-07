@@ -6,7 +6,7 @@ import pytest
 from langchain_core.messages import SystemMessage
 
 from src.domains.persona.infrastructure.graph.generate_single_persona import (
-    GenerateSinglePersona,
+    GenerateSinglePersonaGraph,
 )
 from src.domains.persona.schemas.generate_persona import (
     BaseInputData,
@@ -19,7 +19,7 @@ from src.infrastructure.containers.root import RootContainer
 
 @pytest.mark.asyncio
 async def test_generate_persona_attribute_updates_state(
-    generate_single_persona_graph: GenerateSinglePersona,
+    generate_single_persona_graph: GenerateSinglePersonaGraph,
     container: RootContainer,
     generate_persona_state: GeneratePersonaSchema,
     persona: DemographicAttributePersona,
@@ -45,7 +45,7 @@ async def test_generate_persona_attribute_updates_state(
 
 @pytest.mark.asyncio
 async def test_generate_persona_attribute_requires_segment_name(
-    generate_single_persona_graph: GenerateSinglePersona,
+    generate_single_persona_graph: GenerateSinglePersonaGraph,
     generate_persona_state: GeneratePersonaSchema,
 ) -> None:
     """The generate_persona_attribute node should reject missing segment_name."""
@@ -61,7 +61,7 @@ async def test_generate_persona_attribute_requires_segment_name(
 
 @pytest.mark.asyncio
 async def test_generate_persona_attribute_requires_segment_description(
-    generate_single_persona_graph: GenerateSinglePersona,
+    generate_single_persona_graph: GenerateSinglePersonaGraph,
     generate_persona_state: GeneratePersonaSchema,
 ) -> None:
     """The generate_persona_attribute node should reject missing segment_description."""
@@ -77,7 +77,7 @@ async def test_generate_persona_attribute_requires_segment_description(
 
 @pytest.mark.asyncio
 async def test_generate_persona_biography_creates_narrative(
-    generate_single_persona_graph: GenerateSinglePersona,
+    generate_single_persona_graph: GenerateSinglePersonaGraph,
     container: RootContainer,
     generate_persona_state: GeneratePersonaSchema,
     persona: DemographicAttributePersona,
@@ -101,7 +101,7 @@ async def test_generate_persona_biography_creates_narrative(
 
 @pytest.mark.asyncio
 async def test_generate_persona_biography_requires_demographic_attributes(
-    generate_single_persona_graph: GenerateSinglePersona,
+    generate_single_persona_graph: GenerateSinglePersonaGraph,
     generate_persona_state: GeneratePersonaSchema,
 ) -> None:
     """Biography node should reject missing demographic attributes."""
@@ -112,7 +112,7 @@ async def test_generate_persona_biography_requires_demographic_attributes(
 
 @pytest.mark.asyncio
 async def test_generate_persona_biography_validates_attribute_type(
-    generate_single_persona_graph: GenerateSinglePersona,
+    generate_single_persona_graph: GenerateSinglePersonaGraph,
     generate_persona_state: GeneratePersonaSchema,
 ) -> None:
     """Biography node should validate demographic attributes type."""
@@ -125,7 +125,7 @@ async def test_generate_persona_biography_validates_attribute_type(
 
 @pytest.mark.asyncio
 async def test_generate_persona_experiences_creates_narrative(
-    generate_single_persona_graph: GenerateSinglePersona,
+    generate_single_persona_graph: GenerateSinglePersonaGraph,
     container: RootContainer,
     generate_persona_state: GeneratePersonaSchema,
     persona: DemographicAttributePersona,
@@ -149,7 +149,7 @@ async def test_generate_persona_experiences_creates_narrative(
 
 @pytest.mark.asyncio
 async def test_generate_persona_experiences_requires_demographic_attributes(
-    generate_single_persona_graph: GenerateSinglePersona,
+    generate_single_persona_graph: GenerateSinglePersonaGraph,
     generate_persona_state: GeneratePersonaSchema,
 ) -> None:
     """Experiences node should reject missing demographic attributes."""
@@ -160,7 +160,7 @@ async def test_generate_persona_experiences_requires_demographic_attributes(
 
 @pytest.mark.asyncio
 async def test_generate_persona_experiences_validates_attribute_type(
-    generate_single_persona_graph: GenerateSinglePersona,
+    generate_single_persona_graph: GenerateSinglePersonaGraph,
     generate_persona_state: GeneratePersonaSchema,
 ) -> None:
     """Experiences node should validate demographic attributes type."""
@@ -173,7 +173,7 @@ async def test_generate_persona_experiences_validates_attribute_type(
 
 @pytest.mark.asyncio
 async def test_format_output_combines_all_components(
-    generate_single_persona_graph: GenerateSinglePersona,
+    generate_single_persona_graph: GenerateSinglePersonaGraph,
     generate_persona_state: GeneratePersonaSchema,
     persona: DemographicAttributePersona,
 ) -> None:
@@ -196,7 +196,7 @@ async def test_format_output_combines_all_components(
 
 @pytest.mark.asyncio
 async def test_format_output_handles_missing_optional_fields(
-    generate_single_persona_graph: GenerateSinglePersona,
+    generate_single_persona_graph: GenerateSinglePersonaGraph,
     generate_persona_state: GeneratePersonaSchema,
     persona: DemographicAttributePersona,
 ) -> None:
@@ -216,7 +216,7 @@ async def test_format_output_handles_missing_optional_fields(
 
 @pytest.mark.asyncio
 async def test_format_output_requires_demographic_attributes(
-    generate_single_persona_graph: GenerateSinglePersona,
+    generate_single_persona_graph: GenerateSinglePersonaGraph,
     generate_persona_state: GeneratePersonaSchema,
 ) -> None:
     """Output node should reject missing demographic attributes."""

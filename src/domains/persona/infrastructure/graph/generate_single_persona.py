@@ -20,7 +20,7 @@ from src.domains.persona.schemas.generate_persona import (
 from src.infrastructure.graph.base_graph import BaseGraph
 
 
-class GenerateSinglePersona(BaseGraph):
+class GenerateSinglePersonaGraph(BaseGraph):
 
     _prompt_builder: PersonaPromptManager
 
