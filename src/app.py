@@ -1,3 +1,3 @@
-'''
+"""
 FastAPI application module.
-'''
+"""

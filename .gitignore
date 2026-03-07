@@ -1,9 +1,11 @@
-poetry.lock
 .ruff_cache
 .roomodes
 .vscode
 .mypy_cache
 .env
+
+poetry.lock
+CLAUDE.md
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

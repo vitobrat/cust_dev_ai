@@ -1,9 +1,9 @@
 """State and output schemas for persona generation workflows."""
 
 import operator
-from typing import Annotated, List, Optional, TypedDict
+from typing import Annotated, Any, List, Optional, TypedDict
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, BeforeValidator
 
 from src.domains.persona.schemas.generate_persona.demographic_persona import (
     DemographicAttributePersona,
@@ -14,15 +14,18 @@ from src.domains.persona.schemas.generate_persona.input_data import (
 )
 
 
-class PersonaSchema(BaseModel):
-    """Complete persona schema with all attributes."""
+def coerce_none_to_str(str_value: Any) -> str:
+    return str_value if str_value else ""
 
-    demographic_attributes: DemographicAttributePersona = Field(
-        ...,
-        description="The demographic attributes of the persona.",
-    )
-    biography: str = Field(..., description="The biography of the persona.")
-    experiences: str = Field(..., description="The experiences of the persona with problem.")
+
+# Определение типа с валидатором
+CleanStr = Annotated[str, BeforeValidator(coerce_none_to_str)]
+
+
+class PersonaSchema(BaseModel):
+    demographic_attributes: DemographicAttributePersona
+    biography: CleanStr = ""
+    experiences: CleanStr = ""
 
 
 class GeneratePersonaSchema(TypedDict):

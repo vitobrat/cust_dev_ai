@@ -7,18 +7,18 @@ from src.domains.persona.schemas.generate_persona import (
     DemographicAttributePersona,
     SocialBlock,
 )
-from tests.unit.domains.persona.utils import assert_section_present
+from tests.unit.domains.persona.persona_test_utils import assert_section_present
 
 
 def test_demographic_info_contains_all_sections(persona: DemographicAttributePersona) -> None:
 
-    info = persona.demographic_info
+    demographic_info = persona.demographic_info
 
-    assert_section_present(info, "persona", "Persona Profile:")
-    assert_section_present(info, "problem", "Main Problem:")
-    assert_section_present(info, "social", "Social & Demographic Information:")
-    assert_section_present(info, "psychographic", "Psychographics & Behavior:")
-    assert_section_present(info, "gender", "• Gender: male")
+    assert_section_present(demographic_info, "persona", "Persona Profile:")
+    assert_section_present(demographic_info, "problem", "Main Problem:")
+    assert_section_present(demographic_info, "social", "Social & Demographic Information:")
+    assert_section_present(demographic_info, "psychographic", "Psychographics & Behavior:")
+    assert_section_present(demographic_info, "gender", "• Gender: male")
 
 
 def test_demographic_info_formats_budget_flag(persona: DemographicAttributePersona) -> None:

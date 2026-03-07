@@ -27,13 +27,13 @@ def test_build_find_user_segment_prompt_handles_missing_analysis_result(
 ) -> None:
     """Ensure find segment prompt emits the example block even when analysis_result is None."""
 
-    content = persona_prompt_manager.build_find_user_segment_prompt(
+    prompt = persona_prompt_manager.build_find_user_segment_prompt(
         "A future CloudOps leader",
         None,
     )[0].content
 
-    assert "None" in content
-    assert "Find output example" in content
+    assert "None" in prompt
+    assert "Find output example" in prompt
 
 
 def test_build_verify_user_segment_prompt_includes_optional_details(
@@ -41,16 +41,16 @@ def test_build_verify_user_segment_prompt_includes_optional_details(
 ) -> None:
     """Check that verify prompt serializes optional segment metadata without errors."""
 
-    content = persona_prompt_manager.build_verify_user_segment_prompt(
+    prompt = persona_prompt_manager.build_verify_user_segment_prompt(
         segment_name="DataOps Visionaries",
         unifying_problem_segment=None,
         where_to_find_segment=None,
         segment_description="Teams needing real-time observability",
     )[0].content
 
-    assert "DataOps Visionaries" in content
-    assert "None" in content
-    assert "Verify output example" in content
+    assert "DataOps Visionaries" in prompt
+    assert "None" in prompt
+    assert "Verify output example" in prompt
 
 
 def test_build_generate_persona_prompt_incorporates_output_example(
@@ -58,14 +58,14 @@ def test_build_generate_persona_prompt_incorporates_output_example(
 ) -> None:
     """Assert that generate persona prompt merges the provided description with the sample output."""
 
-    content = persona_prompt_manager.build_generate_persona_prompt(
+    prompt = persona_prompt_manager.build_generate_persona_prompt(
         segment_name="Sustainable Infrastructure Leads",
         segment_description="Leaders investing in energy-efficient clusters",
     )[0].content
 
-    assert "Sustainable Infrastructure Leads" in content
-    assert "Leaders investing in energy-efficient clusters" in content
-    assert "Persona generation output sample" in content
+    assert "Sustainable Infrastructure Leads" in prompt
+    assert "Leaders investing in energy-efficient clusters" in prompt
+    assert "Persona generation output sample" in prompt
 
 
 def test_build_generate_persona_biography_prompt_returns_combined_attributes(
@@ -74,10 +74,10 @@ def test_build_generate_persona_biography_prompt_returns_combined_attributes(
     """Verify that the biography prompt exposes demographic attributes verbatim."""
 
     attributes = ("Analytical, prefers async updates", "segment description")
-    content = persona_prompt_manager.build_generate_persona_biography_prompt(*attributes)[0].content
+    prompt = persona_prompt_manager.build_generate_persona_biography_prompt(*attributes)[0].content
 
-    assert "Analytical, prefers async updates" in content
-    assert "segment description" in content
+    assert "Analytical, prefers async updates" in prompt
+    assert "segment description" in prompt
 
 
 def test_build_generate_persona_experiences_prompt_injects_description(
@@ -85,10 +85,10 @@ def test_build_generate_persona_experiences_prompt_injects_description(
 ) -> None:
     """Confirm that experiences prompt includes the segment description along with attributes."""
 
-    content = persona_prompt_manager.build_generate_persona_experiences_prompt(
+    prompt = persona_prompt_manager.build_generate_persona_experiences_prompt(
         demographic_attributes="Early adopter",
         segment_description="Needs compliance automation",
     )[0].content
 
-    assert "Early adopter" in content
-    assert "Needs compliance automation" in content
+    assert "Early adopter" in prompt
+    assert "Needs compliance automation" in prompt
