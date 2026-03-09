@@ -77,7 +77,10 @@ repos:
     hooks:
       - id: nbstripout
 
-  - repo: https://github.com/hadolint/hadolint
-    rev: v2.12.0
+  - repo: local
     hooks:
       - id: hadolint
+        name: Lint Dockerfiles
+        entry: hadolint/hadolint:v2.12.0 hadolint
+        language: docker_image
+        types: [dockerfile]

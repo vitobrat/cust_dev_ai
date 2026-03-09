@@ -2,19 +2,10 @@ version: 1
 
 formatters:
   json_formatter:
-    '()': config.log.formatters.LogsJsonFormatter
+    '()': src.configs.log.formatters.LogsJsonFormatter
     format: '%(levelname)s %(asctime)s %(module)s %(lineno)d %(message)s '
     datefmt: '%Y-%m-%d %H:%M:%S'
     json_ensure_ascii: False
-  fluent_fmt:
-    '()': fluent.handler.FluentRecordFormatter
-    format:
-      level: '%(levelname)s'
-      datetime: '%(asctime)s'
-      msg: '%(message)s'
-      module: '%(module)s'
-      line: '%(lineno)s'
-    datefmt: '%Y-%m-%d %H:%M:%S'
 
 handlers:
   console:
@@ -22,14 +13,6 @@ handlers:
     level: DEBUG
     formatter: json_formatter
     stream: ext://sys.stdout
-  fluent:
-    class: fluent.handler.FluentHandler
-    host: 127.0.0.1
-    port: 24224
-    tag: consumer.logs
-    buffer_overflow_handler: overflow_handler
-    formatter: fluent_fmt
-    level: DEBUG
   none:
     class: logging.NullHandler
 
@@ -72,7 +55,7 @@ loggers:
     propagate: false
     level: ERROR
   '': # root logger
-    handlers: [ console, fluent ]
+    handlers: [ console, ]
     level: DEBUG
     propagate: False
 

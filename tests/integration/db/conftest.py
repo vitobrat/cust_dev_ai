@@ -9,7 +9,6 @@ from collections.abc import AsyncGenerator, Callable
 
 import pytest_asyncio
 from polyfactory.factories.pydantic_factory import ModelFactory
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domains.interview.db.postgres.repository import InterviewRepository
 from src.domains.persona.db.postgres.repository import PersonaRepository
@@ -18,6 +17,7 @@ from src.domains.sub_interview.db.postgres.repository import (
 )
 from src.domains.task.db.postgres.repository import TaskRepository
 from src.domains.user.db.postgres.repository import UserRepository
+from src.infrastructure.db.postgres.client import DatabaseClient
 from src.schemas.interview import (
     CreateInterviewSchema,
     InterviewRelEntitySchema,
@@ -90,12 +90,12 @@ def create_user_schema_factory() -> Callable[..., CreateUserSchema]:
 
 @pytest_asyncio.fixture(scope="function")
 async def user_factory(
-    session: AsyncSession,
+    db_client: DatabaseClient,
 ) -> AsyncGenerator[Callable[..., UserRelEntitySchema], None]:
     """Provide an async factory for creating User entities in the database.
 
     Args:
-        session: Active database session with transaction rollback.
+        db_client: Test database client wrapping the transactional session.
 
     Yields:
         Async factory function that creates and persists User entities.
@@ -103,8 +103,7 @@ async def user_factory(
 
     async def factory(**kwargs: object) -> UserRelEntitySchema:
         user_data = CreateUserSchemaFactory.build(**kwargs)
-
-        repo = UserRepository(session)
+        repo = UserRepository(db_client)
         return await repo.create(user_data)
 
     yield factory
@@ -140,7 +139,7 @@ def create_interview_schema_factory() -> Callable[..., CreateInterviewSchema]:
 
 @pytest_asyncio.fixture(scope="function")
 async def interview_factory(
-    session: AsyncSession,
+    db_client: DatabaseClient,
     user_factory: Callable[..., UserRelEntitySchema],
 ) -> AsyncGenerator[Callable[..., InterviewRelEntitySchema], None]:
     """Provide an async factory for creating Interview entities in the database.
@@ -148,7 +147,7 @@ async def interview_factory(
     Automatically creates a parent User if user_id is not provided.
 
     Args:
-        session: Active database session with transaction rollback.
+        db_client: Test database client wrapping the transactional session.
         user_factory: Factory for creating parent User entities.
 
     Yields:
@@ -164,8 +163,7 @@ async def interview_factory(
             user_id = owner.id
 
         interview_data = CreateInterviewSchemaFactory.build(user_id=user_id, **kwargs)
-
-        repo = InterviewRepository(session)
+        repo = InterviewRepository(db_client)
         return await repo.create(interview_data)
 
     yield factory
@@ -206,7 +204,7 @@ def create_persona_schema_factory() -> Callable[..., CreatePersonaSchema]:
 
 @pytest_asyncio.fixture(scope="function")
 async def persona_factory(
-    session: AsyncSession,
+    db_client: DatabaseClient,
     interview_factory: Callable[..., InterviewRelEntitySchema],
 ) -> AsyncGenerator[Callable[..., PersonaRelEntitySchema], None]:
     """Provide an async factory for creating Persona entities in the database.
@@ -214,7 +212,7 @@ async def persona_factory(
     Automatically creates a parent Interview (and User) if interview_id is not provided.
 
     Args:
-        session: Active database session with transaction rollback.
+        db_client: Test database client wrapping the transactional session.
         interview_factory: Factory for creating parent Interview entities.
 
     Yields:
@@ -230,8 +228,7 @@ async def persona_factory(
             interview_id = parent_interview.id
 
         persona_data = CreatePersonaSchemaFactory.build(interview_id=interview_id, **kwargs)
-
-        repo = PersonaRepository(session)
+        repo = PersonaRepository(db_client)
         return await repo.create(persona_data)
 
     yield factory
@@ -269,7 +266,7 @@ def create_sub_interview_schema_factory() -> Callable[..., CreateSubInterviewSch
 
 @pytest_asyncio.fixture(scope="function")
 async def sub_interview_factory(
-    session: AsyncSession,
+    db_client: DatabaseClient,
     interview_factory: Callable[..., InterviewRelEntitySchema],
 ) -> AsyncGenerator[Callable[..., SubInterviewRelEntitySchema], None]:
     """Provide an async factory for creating SubInterview entities in the database.
@@ -277,7 +274,7 @@ async def sub_interview_factory(
     Automatically creates a parent Interview (and User) if interview_id is not provided.
 
     Args:
-        session: Active database session with transaction rollback.
+        db_client: Test database client wrapping the transactional session.
         interview_factory: Factory for creating parent Interview entities.
 
     Yields:
@@ -293,8 +290,7 @@ async def sub_interview_factory(
             interview_id = parent_interview.id
 
         sub_interview_data = CreateSubInterviewSchemaFactory.build(interview_id=interview_id, **kwargs)
-
-        repo = SubInterviewRepository(session)
+        repo = SubInterviewRepository(db_client)
         return await repo.create(sub_interview_data)
 
     yield factory
@@ -332,7 +328,7 @@ def create_task_schema_factory() -> Callable[..., CreateTaskSchema]:
 
 @pytest_asyncio.fixture(scope="function")
 async def task_factory(
-    session: AsyncSession,
+    db_client: DatabaseClient,
     user_factory: Callable[..., UserRelEntitySchema],
 ) -> AsyncGenerator[Callable[..., TaskRelEntitySchema], None]:
     """Provide an async factory for creating Task entities in the database.
@@ -340,7 +336,7 @@ async def task_factory(
     Automatically creates a parent User if user_id is not provided.
 
     Args:
-        session: Active database session with transaction rollback.
+        db_client: Test database client wrapping the transactional session.
         user_factory: Factory for creating parent User entities.
 
     Yields:
@@ -356,8 +352,7 @@ async def task_factory(
             user_id = owner.id
 
         task_data = CreateTaskSchemaFactory.build(user_id=user_id, **kwargs)
-
-        repo = TaskRepository(session)
+        repo = TaskRepository(db_client)
         return await repo.create(task_data)
 
     yield factory

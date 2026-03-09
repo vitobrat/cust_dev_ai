@@ -12,7 +12,7 @@ from langgraph.graph.state import CompiledStateGraph
 from pydantic import BaseModel
 
 from src.configs.consts import DEFAULT_GRAPH_RECURSION_LIMIT
-from src.infrastructure.graph.base_graph import GraphError
+from src.infrastructure.exceptions import GraphError
 from src.infrastructure.llm.llm_adapter import LLMAdapter
 from src.infrastructure.prompt.base_prompt_manager import BasePromptManager
 from tests.schema import DummyOutputSchema, DummyStateSchema

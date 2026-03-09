@@ -42,16 +42,15 @@ class InterviewRepository(
         Raises:
             SQLAlchemyError: If database operation fails.
         """
-        interview = InterviewsOrm(
-            report_content_url=create_data.report_content_url,
-            user_id=create_data.user_id,
-        )
-
-        self._session.add(interview)
-        await self._session.flush()
-        await self._session.refresh(interview)
-
-        return InterviewRelEntitySchema.model_validate(interview)
+        async with self._db_client.session() as session:
+            interview = InterviewsOrm(
+                report_content_url=create_data.report_content_url,
+                user_id=create_data.user_id,
+            )
+            session.add(interview)
+            await session.flush()
+            await session.refresh(interview)
+            return InterviewRelEntitySchema.model_validate(interview)
 
     async def get_by_id(
         self,
@@ -68,12 +67,11 @@ class InterviewRepository(
         Raises:
             SQLAlchemyError: If database operation fails.
         """
-        interview = await self._session.get(InterviewsOrm, entity_id)
-
-        if interview is None:
-            return None
-
-        return InterviewRelEntitySchema.model_validate(interview)
+        async with self._db_client.session() as session:
+            interview = await session.get(InterviewsOrm, entity_id)
+            if interview is None:
+                return None
+            return InterviewRelEntitySchema.model_validate(interview)
 
     async def get_all(
         self,
@@ -92,11 +90,11 @@ class InterviewRepository(
         Raises:
             SQLAlchemyError: If database operation fails.
         """
-        query = select(InterviewsOrm).limit(limit).offset(offset)
-        interviews_result = await self._session.execute(query)
-        interviews = interviews_result.scalars().all()
-
-        return [InterviewRelEntitySchema.model_validate(interview) for interview in interviews]
+        async with self._db_client.session() as session:
+            query = select(InterviewsOrm).limit(limit).offset(offset)
+            interviews_result = await session.execute(query)
+            interviews = interviews_result.scalars().all()
+            return [InterviewRelEntitySchema.model_validate(interview) for interview in interviews]
 
     async def get_count(self) -> int:
         """Get total count of interviews in the database.
@@ -107,10 +105,10 @@ class InterviewRepository(
         Raises:
             SQLAlchemyError: If database operation fails.
         """
-        query = select(func.count()).select_from(InterviewsOrm)
-        interviews_result = await self._session.execute(query)
-
-        return interviews_result.scalar_one()
+        async with self._db_client.session() as session:
+            query = select(func.count()).select_from(InterviewsOrm)
+            interviews_result = await session.execute(query)
+            return interviews_result.scalar_one()
 
     async def update_by_id(
         self,
@@ -131,20 +129,18 @@ class InterviewRepository(
         Raises:
             SQLAlchemyError: If database operation fails.
         """
-        interview = await self._session.get(InterviewsOrm, entity_id)
+        async with self._db_client.session() as session:
+            interview = await session.get(InterviewsOrm, entity_id)
+            if interview is None:
+                return None
 
-        if interview is None:
-            return None
+            update_fields = update_data.model_dump(exclude_unset=True)
+            for field, interview_value in update_fields.items():
+                setattr(interview, field, interview_value)
 
-        update_fields = update_data.model_dump(exclude_unset=True)
-
-        for field, interview_value in update_fields.items():
-            setattr(interview, field, interview_value)
-
-        await self._session.flush()
-        await self._session.refresh(interview)
-
-        return InterviewRelEntitySchema.model_validate(interview)
+            await session.flush()
+            await session.refresh(interview)
+            return InterviewRelEntitySchema.model_validate(interview)
 
     async def delete_by_id(
         self,
@@ -161,12 +157,11 @@ class InterviewRepository(
         Raises:
             SQLAlchemyError: If database operation fails.
         """
-        interview = await self._session.get(InterviewsOrm, entity_id)
+        async with self._db_client.session() as session:
+            interview = await session.get(InterviewsOrm, entity_id)
+            if interview is None:
+                return None
 
-        if interview is None:
-            return None
-
-        await self._session.delete(interview)
-        await self._session.flush()
-
-        return entity_id
+            await session.delete(interview)
+            await session.flush()
+            return entity_id

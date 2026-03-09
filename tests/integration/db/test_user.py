@@ -7,9 +7,8 @@ Each test runs in an isolated transaction that is rolled back after completion.
 import uuid
 from collections.abc import Callable
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from src.domains.user.db.postgres.repository import UserRepository
+from src.infrastructure.db.postgres.client import DatabaseClient
 from src.schemas.user import (
     CreateUserSchema,
     UpdateUserSchema,
@@ -25,12 +24,12 @@ class TestUserRepositoryCreate:
 
     async def test_create_returns_user_rel_entity_schema(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         create_user_schema_factory: Callable[..., CreateUserSchema],
     ) -> None:
         """Verify that create() returns UserRelEntitySchema instance."""
         # Arrange
-        repo = UserRepository(session)
+        repo = UserRepository(db_client)
         user_data = create_user_schema_factory()
 
         # Act
@@ -41,12 +40,12 @@ class TestUserRepositoryCreate:
 
     async def test_create_generates_uuid(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         create_user_schema_factory: Callable[..., CreateUserSchema],
     ) -> None:
         """Verify that create() generates a valid UUID for the new user."""
         # Arrange
-        repo = UserRepository(session)
+        repo = UserRepository(db_client)
         user_data = create_user_schema_factory()
 
         # Act
@@ -58,12 +57,12 @@ class TestUserRepositoryCreate:
 
     async def test_create_persists_name(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         create_user_schema_factory: Callable[..., CreateUserSchema],
     ) -> None:
         """Verify that create() correctly persists the name field."""
         # Arrange
-        repo = UserRepository(session)
+        repo = UserRepository(db_client)
         name = "John Doe"
         user_data = create_user_schema_factory(name=name)
 
@@ -75,12 +74,12 @@ class TestUserRepositoryCreate:
 
     async def test_create_two_users_have_different_ids(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         create_user_schema_factory: Callable[..., CreateUserSchema],
     ) -> None:
         """Verify that multiple create() calls generate unique IDs."""
         # Arrange
-        repo = UserRepository(session)
+        repo = UserRepository(db_client)
         data_first = create_user_schema_factory()
         data_second = create_user_schema_factory()
 
@@ -93,12 +92,12 @@ class TestUserRepositoryCreate:
 
     async def test_create_initializes_empty_interviews_list(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         create_user_schema_factory: Callable[..., CreateUserSchema],
     ) -> None:
         """Verify that create() initializes empty interviews relationship list."""
         # Arrange
-        repo = UserRepository(session)
+        repo = UserRepository(db_client)
         user_data = create_user_schema_factory()
 
         # Act
@@ -109,12 +108,12 @@ class TestUserRepositoryCreate:
 
     async def test_create_initializes_empty_tasks_list(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         create_user_schema_factory: Callable[..., CreateUserSchema],
     ) -> None:
         """Verify that create() initializes empty tasks relationship list."""
         # Arrange
-        repo = UserRepository(session)
+        repo = UserRepository(db_client)
         user_data = create_user_schema_factory()
 
         # Act
@@ -125,12 +124,12 @@ class TestUserRepositoryCreate:
 
     async def test_create_user_is_retrievable_from_db(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         create_user_schema_factory: Callable[..., CreateUserSchema],
     ) -> None:
         """Verify that created user can be retrieved via get_by_id()."""
         # Arrange
-        repo = UserRepository(session)
+        repo = UserRepository(db_client)
         user_data = create_user_schema_factory()
 
         # Act
@@ -149,12 +148,12 @@ class TestUserRepositoryGetById:
 
     async def test_get_by_id_returns_correct_user(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user: UserRelEntitySchema,
     ) -> None:
         """Verify that get_by_id() retrieves the correct user by ID."""
         # Arrange
-        repo = UserRepository(session)
+        repo = UserRepository(db_client)
         assert user.id is not None
 
         # Act
@@ -167,11 +166,11 @@ class TestUserRepositoryGetById:
 
     async def test_get_by_id_returns_none_for_nonexistent(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
     ) -> None:
         """Verify that get_by_id() returns None for non-existent ID."""
         # Arrange
-        repo = UserRepository(session)
+        repo = UserRepository(db_client)
 
         # Act
         user_result = await repo.get_by_id(uuid.uuid4())
@@ -181,12 +180,12 @@ class TestUserRepositoryGetById:
 
     async def test_get_by_id_returns_user_rel_entity_schema(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user: UserRelEntitySchema,
     ) -> None:
         """Verify that get_by_id() returns UserRelEntitySchema instance."""
         # Arrange
-        repo = UserRepository(session)
+        repo = UserRepository(db_client)
         assert user.id is not None
 
         # Act
@@ -197,12 +196,12 @@ class TestUserRepositoryGetById:
 
     async def test_get_by_id_loads_interviews_relationship(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user: UserRelEntitySchema,
     ) -> None:
         """Verify that get_by_id() loads the interviews relationship."""
         # Arrange
-        repo = UserRepository(session)
+        repo = UserRepository(db_client)
         assert user.id is not None
 
         # Act
@@ -215,12 +214,12 @@ class TestUserRepositoryGetById:
 
     async def test_get_by_id_loads_tasks_relationship(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user: UserRelEntitySchema,
     ) -> None:
         """Verify that get_by_id() loads the tasks relationship."""
         # Arrange
-        repo = UserRepository(session)
+        repo = UserRepository(db_client)
         assert user.id is not None
 
         # Act
@@ -237,11 +236,11 @@ class TestUserRepositoryGetAll:
 
     async def test_get_all_returns_empty_list_when_no_users(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
     ) -> None:
         """Verify that get_all() returns empty list when no users exist."""
         # Arrange
-        repo = UserRepository(session)
+        repo = UserRepository(db_client)
 
         # Act
         user_result = await repo.get_all()
@@ -251,12 +250,12 @@ class TestUserRepositoryGetAll:
 
     async def test_get_all_returns_all_created_users(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user_factory: Callable[..., UserRelEntitySchema],
     ) -> None:
         """Verify that get_all() returns all persisted users."""
         # Arrange
-        repo = UserRepository(session)
+        repo = UserRepository(db_client)
         await user_factory()
         await user_factory()
         await user_factory()
@@ -269,12 +268,12 @@ class TestUserRepositoryGetAll:
 
     async def test_get_all_returns_list_of_user_rel_entity_schemas(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user_factory: Callable[..., UserRelEntitySchema],
     ) -> None:
         """Verify that get_all() returns list of UserRelEntitySchema instances."""
         # Arrange
-        repo = UserRepository(session)
+        repo = UserRepository(db_client)
         await user_factory()
 
         # Act
@@ -285,12 +284,12 @@ class TestUserRepositoryGetAll:
 
     async def test_get_all_limit_restricts_result_count(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user_factory: Callable[..., UserRelEntitySchema],
     ) -> None:
         """Verify that get_all() respects the limit parameter."""
         # Arrange
-        repo = UserRepository(session)
+        repo = UserRepository(db_client)
         for _ in range(5):
             await user_factory()
 
@@ -302,12 +301,12 @@ class TestUserRepositoryGetAll:
 
     async def test_get_all_offset_skips_records(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user_factory: Callable[..., UserRelEntitySchema],
     ) -> None:
         """Verify that get_all() respects the offset parameter."""
         # Arrange
-        repo = UserRepository(session)
+        repo = UserRepository(db_client)
         for _ in range(4):
             await user_factory()
 
@@ -320,12 +319,12 @@ class TestUserRepositoryGetAll:
 
     async def test_get_all_offset_returns_non_overlapping_pages(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user_factory: Callable[..., UserRelEntitySchema],
     ) -> None:
         """Verify that get_all() pagination returns non-overlapping results."""
         # Arrange
-        repo = UserRepository(session)
+        repo = UserRepository(db_client)
         for _ in range(4):
             await user_factory()
 
@@ -340,12 +339,12 @@ class TestUserRepositoryGetAll:
 
     async def test_get_all_users_have_loaded_relationships(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user_factory: Callable[..., UserRelEntitySchema],
     ) -> None:
         """Verify that get_all() loads relationships for all users."""
         # Arrange
-        repo = UserRepository(session)
+        repo = UserRepository(db_client)
         await user_factory()
         await user_factory()
 
@@ -364,11 +363,11 @@ class TestUserRepositoryGetCount:
 
     async def test_get_count_returns_zero_on_empty_table(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
     ) -> None:
         """Verify that get_count() returns 0 when no users exist."""
         # Arrange
-        repo = UserRepository(session)
+        repo = UserRepository(db_client)
 
         # Act
         count = await repo.get_count()
@@ -378,12 +377,12 @@ class TestUserRepositoryGetCount:
 
     async def test_get_count_reflects_created_users(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user_factory: Callable[..., UserRelEntitySchema],
     ) -> None:
         """Verify that get_count() returns the correct number of users."""
         # Arrange
-        repo = UserRepository(session)
+        repo = UserRepository(db_client)
         await user_factory()
         await user_factory()
 
@@ -395,12 +394,12 @@ class TestUserRepositoryGetCount:
 
     async def test_get_count_decreases_after_delete(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user_factory: Callable[..., UserRelEntitySchema],
     ) -> None:
         """Verify that get_count() decreases after deleting a user."""
         # Arrange
-        repo = UserRepository(session)
+        repo = UserRepository(db_client)
         user = await user_factory()
         await user_factory()
 
@@ -413,12 +412,12 @@ class TestUserRepositoryGetCount:
 
     async def test_get_count_increments_with_each_create(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user_factory: Callable[..., UserRelEntitySchema],
     ) -> None:
         """Verify that get_count() increments correctly with each creation."""
         # Arrange
-        repo = UserRepository(session)
+        repo = UserRepository(db_client)
 
         # Act & Assert
         for expected in range(1, 4):
@@ -431,11 +430,11 @@ class TestUserRepositoryUpdateById:
 
     async def test_update_returns_none_for_nonexistent(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
     ) -> None:
         """Verify that update_by_id() returns None for non-existent ID."""
         # Arrange
-        repo = UserRepository(session)
+        repo = UserRepository(db_client)
         update_data = UpdateUserSchema(name="New Name")
 
         # Act
@@ -446,12 +445,12 @@ class TestUserRepositoryUpdateById:
 
     async def test_update_name(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user: UserRelEntitySchema,
     ) -> None:
         """Verify that update_by_id() correctly updates name field."""
         # Arrange
-        repo = UserRepository(session)
+        repo = UserRepository(db_client)
         assert user.id is not None
         new_name = "Updated User Name"
         update_data = UpdateUserSchema(name=new_name)
@@ -465,12 +464,12 @@ class TestUserRepositoryUpdateById:
 
     async def test_update_persists_to_database(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user: UserRelEntitySchema,
     ) -> None:
         """Verify that update_by_id() changes are persisted to the database."""
         # Arrange
-        repo = UserRepository(session)
+        repo = UserRepository(db_client)
         assert user.id is not None
         update_data = UpdateUserSchema(name="Persisted change")
 
@@ -484,12 +483,12 @@ class TestUserRepositoryUpdateById:
 
     async def test_update_returns_user_rel_entity_schema(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user: UserRelEntitySchema,
     ) -> None:
         """Verify that update_by_id() returns UserRelEntitySchema instance."""
         # Arrange
-        repo = UserRepository(session)
+        repo = UserRepository(db_client)
         assert user.id is not None
         update_data = UpdateUserSchema(name="Type check")
 
@@ -501,12 +500,12 @@ class TestUserRepositoryUpdateById:
 
     async def test_update_preserves_relationships(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user: UserRelEntitySchema,
     ) -> None:
         """Verify that update_by_id() preserves relationships."""
         # Arrange
-        repo = UserRepository(session)
+        repo = UserRepository(db_client)
         assert user.id is not None
         update_data = UpdateUserSchema(name="Relationship check")
 
@@ -522,12 +521,12 @@ class TestUserRepositoryUpdateById:
 
     async def test_update_does_not_change_id(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user: UserRelEntitySchema,
     ) -> None:
         """Verify that update_by_id() does not modify the user ID."""
         # Arrange
-        repo = UserRepository(session)
+        repo = UserRepository(db_client)
         assert user.id is not None
         original_id = user.id
         update_data = UpdateUserSchema(name="ID must not change")
@@ -541,12 +540,12 @@ class TestUserRepositoryUpdateById:
 
     async def test_update_with_empty_schema_returns_unchanged_user(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user: UserRelEntitySchema,
     ) -> None:
         """Verify that update_by_id() with empty schema returns unchanged user."""
         # Arrange
-        repo = UserRepository(session)
+        repo = UserRepository(db_client)
         assert user.id is not None
         original_name = user.name
         update_data = UpdateUserSchema()
@@ -564,12 +563,12 @@ class TestUserRepositoryDeleteById:
 
     async def test_delete_returns_deleted_id(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user: UserRelEntitySchema,
     ) -> None:
         """Verify that delete_by_id() returns the ID of the deleted user."""
         # Arrange
-        repo = UserRepository(session)
+        repo = UserRepository(db_client)
         assert user.id is not None
 
         # Act
@@ -580,12 +579,12 @@ class TestUserRepositoryDeleteById:
 
     async def test_delete_returns_uuid_type(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user: UserRelEntitySchema,
     ) -> None:
         """Verify that delete_by_id() returns a UUID type."""
         # Arrange
-        repo = UserRepository(session)
+        repo = UserRepository(db_client)
         assert user.id is not None
 
         # Act
@@ -596,11 +595,11 @@ class TestUserRepositoryDeleteById:
 
     async def test_delete_returns_none_for_nonexistent(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
     ) -> None:
         """Verify that delete_by_id() returns None for non-existent ID."""
         # Arrange
-        repo = UserRepository(session)
+        repo = UserRepository(db_client)
 
         # Act
         user_result = await repo.delete_by_id(uuid.uuid4())
@@ -610,12 +609,12 @@ class TestUserRepositoryDeleteById:
 
     async def test_delete_removes_user_from_database(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user: UserRelEntitySchema,
     ) -> None:
         """Verify that delete_by_id() removes the user from the database."""
         # Arrange
-        repo = UserRepository(session)
+        repo = UserRepository(db_client)
         assert user.id is not None
 
         # Act
@@ -627,12 +626,12 @@ class TestUserRepositoryDeleteById:
 
     async def test_delete_does_not_affect_other_users(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user_factory: Callable[..., UserRelEntitySchema],
     ) -> None:
         """Verify that delete_by_id() only deletes the specified user."""
         # Arrange
-        repo = UserRepository(session)
+        repo = UserRepository(db_client)
         to_delete = await user_factory()
         to_keep = await user_factory()
         assert to_delete.id is not None
@@ -648,12 +647,12 @@ class TestUserRepositoryDeleteById:
 
     async def test_delete_decreases_count(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user_factory: Callable[..., UserRelEntitySchema],
     ) -> None:
         """Verify that delete_by_id() decreases the total user count."""
         # Arrange
-        repo = UserRepository(session)
+        repo = UserRepository(db_client)
         user1 = await user_factory()
         await user_factory()
         assert user1.id is not None
@@ -667,12 +666,12 @@ class TestUserRepositoryDeleteById:
 
     async def test_delete_is_idempotent_on_second_call(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user: UserRelEntitySchema,
     ) -> None:
         """Verify that delete_by_id() is idempotent (returns None on second call)."""
         # Arrange
-        repo = UserRepository(session)
+        repo = UserRepository(db_client)
         assert user.id is not None
 
         # Act

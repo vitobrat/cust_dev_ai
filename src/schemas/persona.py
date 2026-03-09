@@ -14,7 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from src.domains.persona.schemas.generate_persona.demographic_persona import (
     DemographicAttributePersona,
 )
-from src.schemas.base import VerboseBase
+from src.schemas.api_base import VerboseBase
 
 if TYPE_CHECKING:
     from src.schemas.interview import InterviewEntitySchema

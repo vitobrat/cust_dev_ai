@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any, Optional
 from pydantic import BaseModel, ConfigDict
 
 from src.domains.sub_interview.app.constants import SubInterviewStatus
-from src.schemas.base import VerboseBase
+from src.schemas.api_base import VerboseBase
 
 if TYPE_CHECKING:
     from src.schemas.interview import InterviewEntitySchema

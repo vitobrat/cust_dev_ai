@@ -40,20 +40,19 @@ class TaskRepository(BaseCRUDRepository[TasksOrm, CreateTaskSchema, UpdateTaskSc
         Raises:
             SQLAlchemyError: If database operation fails.
         """
-        task = TasksOrm(
-            type=create_data.type,
-            status=create_data.status,
-            progress=create_data.progress,
-            error_log=create_data.error_log,
-            input_params=create_data.input_params,
-            user_id=create_data.user_id,
-        )
-
-        self._session.add(task)
-        await self._session.flush()
-        await self._session.refresh(task)
-
-        return TaskRelEntitySchema.model_validate(task)
+        async with self._db_client.session() as session:
+            task = TasksOrm(
+                type=create_data.type,
+                status=create_data.status,
+                progress=create_data.progress,
+                error_log=create_data.error_log,
+                input_params=create_data.input_params,
+                user_id=create_data.user_id,
+            )
+            session.add(task)
+            await session.flush()
+            await session.refresh(task)
+            return TaskRelEntitySchema.model_validate(task)
 
     async def get_by_id(
         self,
@@ -70,12 +69,11 @@ class TaskRepository(BaseCRUDRepository[TasksOrm, CreateTaskSchema, UpdateTaskSc
         Raises:
             SQLAlchemyError: If database operation fails.
         """
-        task = await self._session.get(TasksOrm, entity_id)
-
-        if task is None:
-            return None
-
-        return TaskRelEntitySchema.model_validate(task)
+        async with self._db_client.session() as session:
+            task = await session.get(TasksOrm, entity_id)
+            if task is None:
+                return None
+            return TaskRelEntitySchema.model_validate(task)
 
     async def get_all(
         self,
@@ -94,11 +92,11 @@ class TaskRepository(BaseCRUDRepository[TasksOrm, CreateTaskSchema, UpdateTaskSc
         Raises:
             SQLAlchemyError: If database operation fails.
         """
-        query = select(TasksOrm).limit(limit).offset(offset)
-        tasks_result = await self._session.execute(query)
-        tasks = tasks_result.scalars().all()
-
-        return [TaskRelEntitySchema.model_validate(task) for task in tasks]
+        async with self._db_client.session() as session:
+            query = select(TasksOrm).limit(limit).offset(offset)
+            tasks_result = await session.execute(query)
+            tasks = tasks_result.scalars().all()
+            return [TaskRelEntitySchema.model_validate(task) for task in tasks]
 
     async def get_count(self) -> int:
         """Get total count of tasks in the database.
@@ -109,10 +107,10 @@ class TaskRepository(BaseCRUDRepository[TasksOrm, CreateTaskSchema, UpdateTaskSc
         Raises:
             SQLAlchemyError: If database operation fails.
         """
-        query = select(func.count()).select_from(TasksOrm)
-        tasks_result = await self._session.execute(query)
-
-        return tasks_result.scalar_one()
+        async with self._db_client.session() as session:
+            query = select(func.count()).select_from(TasksOrm)
+            tasks_result = await session.execute(query)
+            return tasks_result.scalar_one()
 
     async def update_by_id(
         self,
@@ -133,20 +131,18 @@ class TaskRepository(BaseCRUDRepository[TasksOrm, CreateTaskSchema, UpdateTaskSc
         Raises:
             SQLAlchemyError: If database operation fails.
         """
-        task = await self._session.get(TasksOrm, entity_id)
+        async with self._db_client.session() as session:
+            task = await session.get(TasksOrm, entity_id)
+            if task is None:
+                return None
 
-        if task is None:
-            return None
+            update_fields = update_data.model_dump(exclude_unset=True)
+            for field, task_value in update_fields.items():
+                setattr(task, field, task_value)
 
-        update_fields = update_data.model_dump(exclude_unset=True)
-
-        for field, task_value in update_fields.items():
-            setattr(task, field, task_value)
-
-        await self._session.flush()
-        await self._session.refresh(task)
-
-        return TaskRelEntitySchema.model_validate(task)
+            await session.flush()
+            await session.refresh(task)
+            return TaskRelEntitySchema.model_validate(task)
 
     async def delete_by_id(
         self,
@@ -163,12 +159,11 @@ class TaskRepository(BaseCRUDRepository[TasksOrm, CreateTaskSchema, UpdateTaskSc
         Raises:
             SQLAlchemyError: If database operation fails.
         """
-        task = await self._session.get(TasksOrm, entity_id)
+        async with self._db_client.session() as session:
+            task = await session.get(TasksOrm, entity_id)
+            if task is None:
+                return None
 
-        if task is None:
-            return None
-
-        await self._session.delete(task)
-        await self._session.flush()
-
-        return entity_id
+            await session.delete(task)
+            await session.flush()
+            return entity_id

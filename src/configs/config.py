@@ -9,12 +9,19 @@ import os
 from pathlib import Path
 
 from omegaconf import OmegaConf
-from pydantic import Field, computed_field
+from pydantic import Field, computed_field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from src.configs.consts import _DEFAULT_CONFIG_PATH, PROJECT_ROOT
+from src.configs.consts import (
+    _DEFAULT_CONFIG_PATH,
+    DEFAULT_GRAPH_RECURSION_LIMIT,
+    PROJECT_ROOT,
+    LogLevels,
+)
+from src.configs.log.logger import get_logger
 
 dotenv_path = Path(PROJECT_ROOT, "config", ".env")
+logger = get_logger(__name__)
 
 
 class _BaseValidatedConfig(BaseSettings):
@@ -42,9 +49,7 @@ class LoggerConfigs(_BaseValidatedConfig):
         logging_config_file: Path to the logging configuration YAML file.
     """
 
-    logging_config_file: str = str(
-        Path(PROJECT_ROOT, "config", "logging.yaml"),
-    )
+    logging_config_file: Path = Path(PROJECT_ROOT, "config", "logging.yaml")
 
 
 class PostgresDBConfigs(_BaseValidatedConfig):
@@ -69,9 +74,9 @@ class PostgresDBConfigs(_BaseValidatedConfig):
     host: str = Field(alias="POSTGRES_HOST")
     port: int = Field(alias="POSTGRES_PORT")
     db: str = Field(alias="POSTGRES_DB")
-    pool_size: int = 5
-    max_overflow: int = 10
-    echo: bool = False
+    pool_size: int = Field(default=5, description="Number of persistent connections in the SQLAlchemy pool.")
+    max_overflow: int = Field(default=10, description="Max connections allowed above pool_size before blocking.")
+    echo: bool = Field(default=False, description="Log all SQL statements issued by SQLAlchemy.")
 
     @computed_field
     @property
@@ -95,10 +100,38 @@ class BaseDomainConfig(_BaseValidatedConfig):
     Attributes:
         prompts_dir: Directory path containing prompt templates.
         recursion_limit: Maximum recursion depth for graph operations.
+            Defaults to DEFAULT_GRAPH_RECURSION_LIMIT.
     """
 
     prompts_dir: Path
-    recursion_limit: int
+    recursion_limit: int = Field(default=DEFAULT_GRAPH_RECURSION_LIMIT, ge=1)
+
+    @field_validator("prompts_dir", mode="after")
+    @classmethod
+    def make_path_absolute(cls, prompts_dir_value: Path) -> Path:
+        """Convert prompts_dir to an absolute path and validate its existence.
+
+        Args:
+            v: The path provided in the configuration.
+
+        Returns:
+            The absolute path to the prompts directory.
+
+        Raises:
+            ValueError: If the path does not exist or is not a directory.
+        """
+        # .expanduser() handles '~' and .resolve() makes it absolute
+        absolute_path = prompts_dir_value.expanduser().resolve()
+
+        if not absolute_path.exists():
+            logger.error("Configured prompts_dir for persona does not exist")
+            raise ValueError(f"Configured prompts_dir does not exist: '{absolute_path}'")
+
+        if not absolute_path.is_dir():
+            logger.error("Configured prompts_dir for persona is not a directory")
+            raise ValueError(f"Configured prompts_dir is not a directory: '{absolute_path}'")
+
+        return absolute_path
 
 
 class LangGraphConfigs(_BaseValidatedConfig):
@@ -106,11 +139,11 @@ class LangGraphConfigs(_BaseValidatedConfig):
 
     Attributes:
         default_recursion_limit: Maximum recursion depth for graph generation.
-            Must be at least 1. Defaults to 100.
+            Must be at least 1. Defaults to DEFAULT_GRAPH_RECURSION_LIMIT.
     """
 
     default_recursion_limit: int = Field(
-        default=100,
+        default=DEFAULT_GRAPH_RECURSION_LIMIT,
         ge=1,
         description="Maximum recursion depth for graph generation.",
     )
@@ -134,13 +167,18 @@ class PersonaConfig(BaseDomainConfig):
     """Persona domain-specific configuration.
 
     Attributes:
-        prompts_dir: Directory containing persona generation prompt templates.
-        recursion_limit: Maximum recursion depth for persona generation graphs.
-            Defaults to 5.
+        graph_recursion_limit: Maximum recursion depth for persona LangGraph agent loops.
     """
 
-    prompts_dir: Path = Path(PROJECT_ROOT, "domains", "persona", "infrastructure", "prompt")
-    recursion_limit: int = 5
+    graph_recursion_limit: int = Field(default=5, description="Max recursion depth for LangGraph persona agent loops.")
+
+
+class LLMConfigs(_BaseValidatedConfig):
+    model_name: str
+    base_url: str
+    api_key: str = Field(alias="LLM_API_KEY")
+    temperature: float
+    max_tokens: int
 
 
 class AppConfigs(_BaseValidatedConfig):
@@ -161,11 +199,13 @@ class AppConfigs(_BaseValidatedConfig):
 
     app_host: str
     app_port: int
-    logger: LoggerConfigs
-    langgraph: LangGraphConfigs
+    log_level: LogLevels
+    workers_number: int
+    logger: LoggerConfigs = Field(default_factory=LoggerConfigs)
     persona: PersonaConfig
     postgres: PostgresDBConfigs
     langfuse: LangfuseConfigs
+    llm: LLMConfigs
 
     @classmethod
     def init(cls) -> "AppConfigs":

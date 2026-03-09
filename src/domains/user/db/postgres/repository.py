@@ -40,15 +40,12 @@ class UserRepository(BaseCRUDRepository[UsersOrm, CreateUserSchema, UpdateUserSc
         Raises:
             SQLAlchemyError: If database operation fails.
         """
-        user = UsersOrm(
-            name=create_data.name,
-        )
-
-        self._session.add(user)
-        await self._session.flush()
-        await self._session.refresh(user)
-
-        return UserRelEntitySchema.model_validate(user)
+        async with self._db_client.session() as session:
+            user = UsersOrm(name=create_data.name)
+            session.add(user)
+            await session.flush()
+            await session.refresh(user)
+            return UserRelEntitySchema.model_validate(user)
 
     async def get_by_id(
         self,
@@ -65,12 +62,11 @@ class UserRepository(BaseCRUDRepository[UsersOrm, CreateUserSchema, UpdateUserSc
         Raises:
             SQLAlchemyError: If database operation fails.
         """
-        user = await self._session.get(UsersOrm, entity_id)
-
-        if user is None:
-            return None
-
-        return UserRelEntitySchema.model_validate(user)
+        async with self._db_client.session() as session:
+            user = await session.get(UsersOrm, entity_id)
+            if user is None:
+                return None
+            return UserRelEntitySchema.model_validate(user)
 
     async def get_all(
         self,
@@ -89,11 +85,11 @@ class UserRepository(BaseCRUDRepository[UsersOrm, CreateUserSchema, UpdateUserSc
         Raises:
             SQLAlchemyError: If database operation fails.
         """
-        query = select(UsersOrm).limit(limit).offset(offset)
-        users_result = await self._session.execute(query)
-        users = users_result.scalars().all()
-
-        return [UserRelEntitySchema.model_validate(user) for user in users]
+        async with self._db_client.session() as session:
+            query = select(UsersOrm).limit(limit).offset(offset)
+            users_result = await session.execute(query)
+            users = users_result.scalars().all()
+            return [UserRelEntitySchema.model_validate(user) for user in users]
 
     async def get_count(self) -> int:
         """Get total count of users in the database.
@@ -104,10 +100,10 @@ class UserRepository(BaseCRUDRepository[UsersOrm, CreateUserSchema, UpdateUserSc
         Raises:
             SQLAlchemyError: If database operation fails.
         """
-        query = select(func.count()).select_from(UsersOrm)
-        users_result = await self._session.execute(query)
-
-        return users_result.scalar_one()
+        async with self._db_client.session() as session:
+            query = select(func.count()).select_from(UsersOrm)
+            users_result = await session.execute(query)
+            return users_result.scalar_one()
 
     async def update_by_id(
         self,
@@ -128,20 +124,18 @@ class UserRepository(BaseCRUDRepository[UsersOrm, CreateUserSchema, UpdateUserSc
         Raises:
             SQLAlchemyError: If database operation fails.
         """
-        user = await self._session.get(UsersOrm, entity_id)
+        async with self._db_client.session() as session:
+            user = await session.get(UsersOrm, entity_id)
+            if user is None:
+                return None
 
-        if user is None:
-            return None
+            update_fields = update_data.model_dump(exclude_unset=True)
+            for field, user_value in update_fields.items():
+                setattr(user, field, user_value)
 
-        update_fields = update_data.model_dump(exclude_unset=True)
-
-        for field, user_value in update_fields.items():
-            setattr(user, field, user_value)
-
-        await self._session.flush()
-        await self._session.refresh(user)
-
-        return UserRelEntitySchema.model_validate(user)
+            await session.flush()
+            await session.refresh(user)
+            return UserRelEntitySchema.model_validate(user)
 
     async def delete_by_id(
         self,
@@ -158,12 +152,11 @@ class UserRepository(BaseCRUDRepository[UsersOrm, CreateUserSchema, UpdateUserSc
         Raises:
             SQLAlchemyError: If database operation fails.
         """
-        user = await self._session.get(UsersOrm, entity_id)
+        async with self._db_client.session() as session:
+            user = await session.get(UsersOrm, entity_id)
+            if user is None:
+                return None
 
-        if user is None:
-            return None
-
-        await self._session.delete(user)
-        await self._session.flush()
-
-        return entity_id
+            await session.delete(user)
+            await session.flush()
+            return entity_id

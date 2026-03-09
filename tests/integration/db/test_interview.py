@@ -7,9 +7,8 @@ Each test runs in an isolated transaction that is rolled back after completion.
 import uuid
 from collections.abc import Callable
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from src.domains.interview.db.postgres.repository import InterviewRepository
+from src.infrastructure.db.postgres.client import DatabaseClient
 from src.schemas.interview import (
     CreateInterviewSchema,
     InterviewRelEntitySchema,
@@ -26,13 +25,13 @@ class TestInterviewRepositoryCreate:
 
     async def test_create_returns_interview_rel_entity_schema(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user: UserRelEntitySchema,
         create_interview_schema_factory: Callable[..., CreateInterviewSchema],
     ) -> None:
         """Verify that create() returns InterviewRelEntitySchema instance."""
         # Arrange
-        repo = InterviewRepository(session)
+        repo = InterviewRepository(db_client)
         interview_data = create_interview_schema_factory(user_id=user.id)
 
         # Act
@@ -43,13 +42,13 @@ class TestInterviewRepositoryCreate:
 
     async def test_create_generates_uuid(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user: UserRelEntitySchema,
         create_interview_schema_factory: Callable[..., CreateInterviewSchema],
     ) -> None:
         """Verify that create() generates a valid UUID for the new interview."""
         # Arrange
-        repo = InterviewRepository(session)
+        repo = InterviewRepository(db_client)
         interview_data = create_interview_schema_factory(user_id=user.id)
 
         # Act
@@ -61,13 +60,13 @@ class TestInterviewRepositoryCreate:
 
     async def test_create_persists_report_content_url(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user: UserRelEntitySchema,
         create_interview_schema_factory: Callable[..., CreateInterviewSchema],
     ) -> None:
         """Verify that create() correctly persists the report_content_url field."""
         # Arrange
-        repo = InterviewRepository(session)
+        repo = InterviewRepository(db_client)
         report_url = "https://example.com/reports/interview-123.pdf"
         interview_data = create_interview_schema_factory(
             user_id=user.id,
@@ -82,13 +81,13 @@ class TestInterviewRepositoryCreate:
 
     async def test_create_persists_none_report_content_url(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user: UserRelEntitySchema,
         create_interview_schema_factory: Callable[..., CreateInterviewSchema],
     ) -> None:
         """Verify that create() correctly persists None for report_content_url."""
         # Arrange
-        repo = InterviewRepository(session)
+        repo = InterviewRepository(db_client)
         interview_data = create_interview_schema_factory(
             user_id=user.id,
             report_content_url=None,
@@ -102,13 +101,13 @@ class TestInterviewRepositoryCreate:
 
     async def test_create_persists_user_id(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user: UserRelEntitySchema,
         create_interview_schema_factory: Callable[..., CreateInterviewSchema],
     ) -> None:
         """Verify that create() correctly persists user_id field."""
         # Arrange
-        repo = InterviewRepository(session)
+        repo = InterviewRepository(db_client)
         interview_data = create_interview_schema_factory(user_id=user.id)
 
         # Act
@@ -119,13 +118,13 @@ class TestInterviewRepositoryCreate:
 
     async def test_create_generates_created_at_timestamp(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user: UserRelEntitySchema,
         create_interview_schema_factory: Callable[..., CreateInterviewSchema],
     ) -> None:
         """Verify that create() automatically generates created_at timestamp."""
         # Arrange
-        repo = InterviewRepository(session)
+        repo = InterviewRepository(db_client)
         interview_data = create_interview_schema_factory(user_id=user.id)
 
         # Act
@@ -136,13 +135,13 @@ class TestInterviewRepositoryCreate:
 
     async def test_create_generates_updated_at_timestamp(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user: UserRelEntitySchema,
         create_interview_schema_factory: Callable[..., CreateInterviewSchema],
     ) -> None:
         """Verify that create() automatically generates updated_at timestamp."""
         # Arrange
-        repo = InterviewRepository(session)
+        repo = InterviewRepository(db_client)
         interview_data = create_interview_schema_factory(user_id=user.id)
 
         # Act
@@ -153,13 +152,13 @@ class TestInterviewRepositoryCreate:
 
     async def test_create_two_interviews_have_different_ids(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user: UserRelEntitySchema,
         create_interview_schema_factory: Callable[..., CreateInterviewSchema],
     ) -> None:
         """Verify that multiple create() calls generate unique IDs."""
         # Arrange
-        repo = InterviewRepository(session)
+        repo = InterviewRepository(db_client)
         data_first = create_interview_schema_factory(user_id=user.id)
         data_second = create_interview_schema_factory(user_id=user.id)
 
@@ -172,13 +171,13 @@ class TestInterviewRepositoryCreate:
 
     async def test_create_loads_user_relationship(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user: UserRelEntitySchema,
         create_interview_schema_factory: Callable[..., CreateInterviewSchema],
     ) -> None:
         """Verify that create() eagerly loads the user relationship."""
         # Arrange
-        repo = InterviewRepository(session)
+        repo = InterviewRepository(db_client)
         interview_data = create_interview_schema_factory(user_id=user.id)
 
         # Act
@@ -189,13 +188,13 @@ class TestInterviewRepositoryCreate:
 
     async def test_create_user_relationship_has_correct_id(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user: UserRelEntitySchema,
         create_interview_schema_factory: Callable[..., CreateInterviewSchema],
     ) -> None:
         """Verify that the loaded user relationship has the correct ID."""
         # Arrange
-        repo = InterviewRepository(session)
+        repo = InterviewRepository(db_client)
         interview_data = create_interview_schema_factory(user_id=user.id)
 
         # Act
@@ -206,13 +205,13 @@ class TestInterviewRepositoryCreate:
 
     async def test_create_user_relationship_is_correct_type(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user: UserRelEntitySchema,
         create_interview_schema_factory: Callable[..., CreateInterviewSchema],
     ) -> None:
         """Verify that the user relationship is of correct schema type."""
         # Arrange
-        repo = InterviewRepository(session)
+        repo = InterviewRepository(db_client)
         interview_data = create_interview_schema_factory(user_id=user.id)
 
         # Act
@@ -223,13 +222,13 @@ class TestInterviewRepositoryCreate:
 
     async def test_create_interview_is_retrievable_from_db(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user: UserRelEntitySchema,
         create_interview_schema_factory: Callable[..., CreateInterviewSchema],
     ) -> None:
         """Verify that created interview can be retrieved via get_by_id()."""
         # Arrange
-        repo = InterviewRepository(session)
+        repo = InterviewRepository(db_client)
         interview_data = create_interview_schema_factory(user_id=user.id)
 
         # Act
@@ -244,13 +243,13 @@ class TestInterviewRepositoryCreate:
 
     async def test_create_initializes_empty_personas_list(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user: UserRelEntitySchema,
         create_interview_schema_factory: Callable[..., CreateInterviewSchema],
     ) -> None:
         """Verify that create() initializes empty personas list."""
         # Arrange
-        repo = InterviewRepository(session)
+        repo = InterviewRepository(db_client)
         interview_data = create_interview_schema_factory(user_id=user.id)
 
         # Act
@@ -261,13 +260,13 @@ class TestInterviewRepositoryCreate:
 
     async def test_create_initializes_empty_sub_interviews_list(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user: UserRelEntitySchema,
         create_interview_schema_factory: Callable[..., CreateInterviewSchema],
     ) -> None:
         """Verify that create() initializes empty sub_interviews list."""
         # Arrange
-        repo = InterviewRepository(session)
+        repo = InterviewRepository(db_client)
         interview_data = create_interview_schema_factory(user_id=user.id)
 
         # Act
@@ -282,12 +281,12 @@ class TestInterviewRepositoryGetById:
 
     async def test_get_by_id_returns_correct_interview(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         interview: InterviewRelEntitySchema,
     ) -> None:
         """Verify that get_by_id() retrieves the correct interview by ID."""
         # Arrange
-        repo = InterviewRepository(session)
+        repo = InterviewRepository(db_client)
         assert interview.id is not None
 
         # Act
@@ -300,11 +299,11 @@ class TestInterviewRepositoryGetById:
 
     async def test_get_by_id_returns_none_for_nonexistent(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
     ) -> None:
         """Verify that get_by_id() returns None for non-existent ID."""
         # Arrange
-        repo = InterviewRepository(session)
+        repo = InterviewRepository(db_client)
 
         # Act
         interview_result = await repo.get_by_id(uuid.uuid4())
@@ -314,12 +313,12 @@ class TestInterviewRepositoryGetById:
 
     async def test_get_by_id_returns_interview_rel_entity_schema(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         interview: InterviewRelEntitySchema,
     ) -> None:
         """Verify that get_by_id() returns InterviewRelEntitySchema instance."""
         # Arrange
-        repo = InterviewRepository(session)
+        repo = InterviewRepository(db_client)
         assert interview.id is not None
 
         # Act
@@ -330,12 +329,12 @@ class TestInterviewRepositoryGetById:
 
     async def test_get_by_id_loads_user_relationship(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         interview: InterviewRelEntitySchema,
     ) -> None:
         """Verify that get_by_id() eagerly loads the user relationship."""
         # Arrange
-        repo = InterviewRepository(session)
+        repo = InterviewRepository(db_client)
         assert interview.id is not None
 
         # Act
@@ -347,12 +346,12 @@ class TestInterviewRepositoryGetById:
 
     async def test_get_by_id_user_relationship_has_correct_id(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         interview: InterviewRelEntitySchema,
     ) -> None:
         """Verify that the loaded user relationship has the correct ID."""
         # Arrange
-        repo = InterviewRepository(session)
+        repo = InterviewRepository(db_client)
         assert interview.id is not None
 
         # Act
@@ -364,12 +363,12 @@ class TestInterviewRepositoryGetById:
 
     async def test_get_by_id_user_relationship_is_correct_type(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         interview: InterviewRelEntitySchema,
     ) -> None:
         """Verify that the user relationship is of correct schema type."""
         # Arrange
-        repo = InterviewRepository(session)
+        repo = InterviewRepository(db_client)
         assert interview.id is not None
 
         # Act
@@ -381,12 +380,12 @@ class TestInterviewRepositoryGetById:
 
     async def test_get_by_id_loads_personas_relationship(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         interview: InterviewRelEntitySchema,
     ) -> None:
         """Verify that get_by_id() loads the personas relationship."""
         # Arrange
-        repo = InterviewRepository(session)
+        repo = InterviewRepository(db_client)
         assert interview.id is not None
 
         # Act
@@ -399,12 +398,12 @@ class TestInterviewRepositoryGetById:
 
     async def test_get_by_id_loads_sub_interviews_relationship(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         interview: InterviewRelEntitySchema,
     ) -> None:
         """Verify that get_by_id() loads the sub_interviews relationship."""
         # Arrange
-        repo = InterviewRepository(session)
+        repo = InterviewRepository(db_client)
         assert interview.id is not None
 
         # Act
@@ -421,11 +420,11 @@ class TestInterviewRepositoryGetAll:
 
     async def test_get_all_returns_empty_list_when_no_interviews(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
     ) -> None:
         """Verify that get_all() returns empty list when no interviews exist."""
         # Arrange
-        repo = InterviewRepository(session)
+        repo = InterviewRepository(db_client)
 
         # Act
         interview_result = await repo.get_all()
@@ -435,12 +434,12 @@ class TestInterviewRepositoryGetAll:
 
     async def test_get_all_returns_all_created_interviews(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         interview_factory: Callable[..., InterviewRelEntitySchema],
     ) -> None:
         """Verify that get_all() returns all persisted interviews."""
         # Arrange
-        repo = InterviewRepository(session)
+        repo = InterviewRepository(db_client)
         await interview_factory()
         await interview_factory()
         await interview_factory()
@@ -453,12 +452,12 @@ class TestInterviewRepositoryGetAll:
 
     async def test_get_all_returns_list_of_interview_rel_entity_schemas(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         interview_factory: Callable[..., InterviewRelEntitySchema],
     ) -> None:
         """Verify that get_all() returns list of InterviewRelEntitySchema instances."""
         # Arrange
-        repo = InterviewRepository(session)
+        repo = InterviewRepository(db_client)
         await interview_factory()
 
         # Act
@@ -469,12 +468,12 @@ class TestInterviewRepositoryGetAll:
 
     async def test_get_all_limit_restricts_result_count(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         interview_factory: Callable[..., InterviewRelEntitySchema],
     ) -> None:
         """Verify that get_all() respects the limit parameter."""
         # Arrange
-        repo = InterviewRepository(session)
+        repo = InterviewRepository(db_client)
         for _ in range(5):
             await interview_factory()
 
@@ -486,12 +485,12 @@ class TestInterviewRepositoryGetAll:
 
     async def test_get_all_offset_skips_records(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         interview_factory: Callable[..., InterviewRelEntitySchema],
     ) -> None:
         """Verify that get_all() respects the offset parameter."""
         # Arrange
-        repo = InterviewRepository(session)
+        repo = InterviewRepository(db_client)
         for _ in range(4):
             await interview_factory()
 
@@ -504,12 +503,12 @@ class TestInterviewRepositoryGetAll:
 
     async def test_get_all_offset_returns_non_overlapping_pages(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         interview_factory: Callable[..., InterviewRelEntitySchema],
     ) -> None:
         """Verify that get_all() pagination returns non-overlapping results."""
         # Arrange
-        repo = InterviewRepository(session)
+        repo = InterviewRepository(db_client)
         for _ in range(4):
             await interview_factory()
 
@@ -524,12 +523,12 @@ class TestInterviewRepositoryGetAll:
 
     async def test_get_all_interviews_have_loaded_user_relationships(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         interview_factory: Callable[..., InterviewRelEntitySchema],
     ) -> None:
         """Verify that get_all() eagerly loads user relationships for all interviews."""
         # Arrange
-        repo = InterviewRepository(session)
+        repo = InterviewRepository(db_client)
         await interview_factory()
         await interview_factory()
 
@@ -546,11 +545,11 @@ class TestInterviewRepositoryGetCount:
 
     async def test_get_count_returns_zero_on_empty_table(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
     ) -> None:
         """Verify that get_count() returns 0 when no interviews exist."""
         # Arrange
-        repo = InterviewRepository(session)
+        repo = InterviewRepository(db_client)
 
         # Act
         count = await repo.get_count()
@@ -560,12 +559,12 @@ class TestInterviewRepositoryGetCount:
 
     async def test_get_count_reflects_created_interviews(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         interview_factory: Callable[..., InterviewRelEntitySchema],
     ) -> None:
         """Verify that get_count() returns the correct number of interviews."""
         # Arrange
-        repo = InterviewRepository(session)
+        repo = InterviewRepository(db_client)
         await interview_factory()
         await interview_factory()
 
@@ -577,12 +576,12 @@ class TestInterviewRepositoryGetCount:
 
     async def test_get_count_decreases_after_delete(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         interview_factory: Callable[..., InterviewRelEntitySchema],
     ) -> None:
         """Verify that get_count() decreases after deleting an interview."""
         # Arrange
-        repo = InterviewRepository(session)
+        repo = InterviewRepository(db_client)
         interview = await interview_factory()
         await interview_factory()
 
@@ -595,12 +594,12 @@ class TestInterviewRepositoryGetCount:
 
     async def test_get_count_increments_with_each_create(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         interview_factory: Callable[..., InterviewRelEntitySchema],
     ) -> None:
         """Verify that get_count() increments correctly with each creation."""
         # Arrange
-        repo = InterviewRepository(session)
+        repo = InterviewRepository(db_client)
 
         # Act & Assert
         for expected in range(1, 4):
@@ -613,11 +612,11 @@ class TestInterviewRepositoryUpdateById:
 
     async def test_update_returns_none_for_nonexistent(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
     ) -> None:
         """Verify that update_by_id() returns None for non-existent ID."""
         # Arrange
-        repo = InterviewRepository(session)
+        repo = InterviewRepository(db_client)
         update_data = UpdateInterviewSchema(report_content_url="https://example.com/new-report.pdf")
 
         # Act
@@ -628,12 +627,12 @@ class TestInterviewRepositoryUpdateById:
 
     async def test_update_report_content_url(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         interview: InterviewRelEntitySchema,
     ) -> None:
         """Verify that update_by_id() correctly updates report_content_url field."""
         # Arrange
-        repo = InterviewRepository(session)
+        repo = InterviewRepository(db_client)
         assert interview.id is not None
         new_url = "https://example.com/updated-report.pdf"
         update_data = UpdateInterviewSchema(report_content_url=new_url)
@@ -647,12 +646,12 @@ class TestInterviewRepositoryUpdateById:
 
     async def test_update_report_content_url_to_none(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         interview_factory: Callable[..., InterviewRelEntitySchema],
     ) -> None:
         """Verify that update_by_id() can set report_content_url to None."""
         # Arrange
-        repo = InterviewRepository(session)
+        repo = InterviewRepository(db_client)
         interview = await interview_factory(report_content_url="https://example.com/report.pdf")
         assert interview.id is not None
         update_data = UpdateInterviewSchema(report_content_url=None)
@@ -666,12 +665,12 @@ class TestInterviewRepositoryUpdateById:
 
     async def test_update_does_not_change_unspecified_fields(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         interview: InterviewRelEntitySchema,
     ) -> None:
         """Verify that update_by_id() only modifies specified fields."""
         # Arrange
-        repo = InterviewRepository(session)
+        repo = InterviewRepository(db_client)
         assert interview.id is not None
         original_user_id = interview.user_id
         original_created_at = interview.created_at
@@ -687,12 +686,12 @@ class TestInterviewRepositoryUpdateById:
 
     async def test_update_persists_to_database(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         interview: InterviewRelEntitySchema,
     ) -> None:
         """Verify that update_by_id() changes are persisted to the database."""
         # Arrange
-        repo = InterviewRepository(session)
+        repo = InterviewRepository(db_client)
         assert interview.id is not None
         update_data = UpdateInterviewSchema(report_content_url="https://example.com/persisted.pdf")
 
@@ -706,12 +705,12 @@ class TestInterviewRepositoryUpdateById:
 
     async def test_update_returns_interview_rel_entity_schema(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         interview: InterviewRelEntitySchema,
     ) -> None:
         """Verify that update_by_id() returns InterviewRelEntitySchema instance."""
         # Arrange
-        repo = InterviewRepository(session)
+        repo = InterviewRepository(db_client)
         assert interview.id is not None
         update_data = UpdateInterviewSchema(report_content_url="https://example.com/type-check.pdf")
 
@@ -723,12 +722,12 @@ class TestInterviewRepositoryUpdateById:
 
     async def test_update_preserves_user_relationship(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         interview: InterviewRelEntitySchema,
     ) -> None:
         """Verify that update_by_id() preserves the user relationship."""
         # Arrange
-        repo = InterviewRepository(session)
+        repo = InterviewRepository(db_client)
         assert interview.id is not None
         update_data = UpdateInterviewSchema(report_content_url="https://example.com/relationship.pdf")
 
@@ -743,12 +742,12 @@ class TestInterviewRepositoryUpdateById:
 
     async def test_update_does_not_change_id(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         interview: InterviewRelEntitySchema,
     ) -> None:
         """Verify that update_by_id() does not modify the interview ID."""
         # Arrange
-        repo = InterviewRepository(session)
+        repo = InterviewRepository(db_client)
         assert interview.id is not None
         original_id = interview.id
         update_data = UpdateInterviewSchema(report_content_url="https://example.com/id-check.pdf")
@@ -762,12 +761,12 @@ class TestInterviewRepositoryUpdateById:
 
     async def test_update_changes_updated_at_timestamp(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         interview: InterviewRelEntitySchema,
     ) -> None:
         """Verify that update_by_id() updates the updated_at timestamp."""
         # Arrange
-        repo = InterviewRepository(session)
+        repo = InterviewRepository(db_client)
         assert interview.id is not None
         original_updated_at = interview.updated_at
         update_data = UpdateInterviewSchema(report_content_url="https://example.com/timestamp.pdf")
@@ -785,12 +784,12 @@ class TestInterviewRepositoryDeleteById:
 
     async def test_delete_returns_deleted_id(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         interview: InterviewRelEntitySchema,
     ) -> None:
         """Verify that delete_by_id() returns the ID of the deleted interview."""
         # Arrange
-        repo = InterviewRepository(session)
+        repo = InterviewRepository(db_client)
         assert interview.id is not None
 
         # Act
@@ -801,12 +800,12 @@ class TestInterviewRepositoryDeleteById:
 
     async def test_delete_returns_uuid_type(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         interview: InterviewRelEntitySchema,
     ) -> None:
         """Verify that delete_by_id() returns a UUID type."""
         # Arrange
-        repo = InterviewRepository(session)
+        repo = InterviewRepository(db_client)
         assert interview.id is not None
 
         # Act
@@ -817,11 +816,11 @@ class TestInterviewRepositoryDeleteById:
 
     async def test_delete_returns_none_for_nonexistent(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
     ) -> None:
         """Verify that delete_by_id() returns None for non-existent ID."""
         # Arrange
-        repo = InterviewRepository(session)
+        repo = InterviewRepository(db_client)
 
         # Act
         interview_result = await repo.delete_by_id(uuid.uuid4())
@@ -831,12 +830,12 @@ class TestInterviewRepositoryDeleteById:
 
     async def test_delete_removes_interview_from_database(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         interview: InterviewRelEntitySchema,
     ) -> None:
         """Verify that delete_by_id() removes the interview from the database."""
         # Arrange
-        repo = InterviewRepository(session)
+        repo = InterviewRepository(db_client)
         assert interview.id is not None
 
         # Act
@@ -848,12 +847,12 @@ class TestInterviewRepositoryDeleteById:
 
     async def test_delete_does_not_affect_other_interviews(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         interview_factory: Callable[..., InterviewRelEntitySchema],
     ) -> None:
         """Verify that delete_by_id() only deletes the specified interview."""
         # Arrange
-        repo = InterviewRepository(session)
+        repo = InterviewRepository(db_client)
         to_delete = await interview_factory()
         to_keep = await interview_factory()
         assert to_delete.id is not None
@@ -869,12 +868,12 @@ class TestInterviewRepositoryDeleteById:
 
     async def test_delete_decreases_count(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         interview_factory: Callable[..., InterviewRelEntitySchema],
     ) -> None:
         """Verify that delete_by_id() decreases the total interview count."""
         # Arrange
-        repo = InterviewRepository(session)
+        repo = InterviewRepository(db_client)
         interview1 = await interview_factory()
         await interview_factory()
         assert interview1.id is not None
@@ -888,12 +887,12 @@ class TestInterviewRepositoryDeleteById:
 
     async def test_delete_is_idempotent_on_second_call(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         interview: InterviewRelEntitySchema,
     ) -> None:
         """Verify that delete_by_id() is idempotent (returns None on second call)."""
         # Arrange
-        repo = InterviewRepository(session)
+        repo = InterviewRepository(db_client)
         assert interview.id is not None
 
         # Act

@@ -7,7 +7,9 @@ This module provides core test infrastructure including:
 - Mock LLM fixtures for testing AI-dependent code
 """
 
-from typing import AsyncGenerator, cast
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
+from typing import cast
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -22,9 +24,27 @@ from sqlalchemy.pool import NullPool
 from testcontainers.postgres import PostgresContainer
 
 from src.infrastructure.containers.root import RootContainer
+from src.infrastructure.db.postgres.client import DatabaseClient
 from src.infrastructure.llm.llm_adapter import LLMAdapter, LLMProtocol
 from tests.integration.db.integration_utils import run_migrations
 from tests.schema import DummyOutputSchema
+
+
+class TestDatabaseClient(DatabaseClient):
+    """DatabaseClient substitute for tests.
+
+    Wraps an existing test session so that repositories receive
+    the same transactional session managed by the test fixture.
+    No commit or rollback happens here — the test fixture controls the transaction.
+    """
+
+    def __init__(self, test_session: AsyncSession) -> None:
+        self._test_session = test_session
+
+    @asynccontextmanager
+    async def session(self) -> AsyncGenerator[AsyncSession, None]:
+        """Yield the shared test session without commit/rollback."""
+        yield self._test_session
 
 
 @pytest.fixture(scope="session")
@@ -93,6 +113,19 @@ async def session(db_engine: AsyncEngine) -> AsyncGenerator[AsyncSession, None]:
             yield test_session
 
         await transaction.rollback()
+
+
+@pytest_asyncio.fixture(scope="function")
+async def db_client(session: AsyncSession) -> AsyncGenerator[DatabaseClient, None]:
+    """Provide a TestDatabaseClient wrapping the transactional test session.
+
+    Args:
+        session: Test session with transaction rollback.
+
+    Yields:
+        DatabaseClient-compatible object for repository construction.
+    """
+    yield TestDatabaseClient(session)
 
 
 @pytest.fixture(scope="session")

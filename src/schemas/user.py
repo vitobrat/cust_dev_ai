@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 from src.configs.consts import USER_NAME_MAX_LENGTH
-from src.schemas.base import VerboseBase
+from src.schemas.api_base import VerboseBase
 
 if TYPE_CHECKING:
     from src.schemas.interview import InterviewEntitySchema
