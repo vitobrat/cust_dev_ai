@@ -7,10 +7,9 @@ Each test runs in an isolated transaction that is rolled back after completion.
 import uuid
 from collections.abc import Callable
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from src.domains.task.app.constants import TaskStatus, TaskType
 from src.domains.task.db.postgres.repository import TaskRepository
+from src.infrastructure.db.postgres.client import DatabaseClient
 from src.schemas.task import (
     CreateTaskSchema,
     TaskRelEntitySchema,
@@ -27,13 +26,13 @@ class TestTaskRepositoryCreate:
 
     async def test_create_returns_task_rel_entity_schema(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user: UserRelEntitySchema,
         create_task_schema_factory: Callable[..., CreateTaskSchema],
     ) -> None:
         """Verify that create() returns TaskRelEntitySchema instance."""
         # Arrange
-        repo = TaskRepository(session)
+        repo = TaskRepository(db_client)
         task_data = create_task_schema_factory(user_id=user.id)
 
         # Act
@@ -44,13 +43,13 @@ class TestTaskRepositoryCreate:
 
     async def test_create_generates_uuid(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user: UserRelEntitySchema,
         create_task_schema_factory: Callable[..., CreateTaskSchema],
     ) -> None:
         """Verify that create() generates a valid UUID for the new task."""
         # Arrange
-        repo = TaskRepository(session)
+        repo = TaskRepository(db_client)
         task_data = create_task_schema_factory(user_id=user.id)
 
         # Act
@@ -62,13 +61,13 @@ class TestTaskRepositoryCreate:
 
     async def test_create_persists_type(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user: UserRelEntitySchema,
         create_task_schema_factory: Callable[..., CreateTaskSchema],
     ) -> None:
         """Verify that create() correctly persists the type field."""
         # Arrange
-        repo = TaskRepository(session)
+        repo = TaskRepository(db_client)
         task_type = TaskType.PERSONA_GENERATION
         task_data = create_task_schema_factory(user_id=user.id, type=task_type)
 
@@ -80,13 +79,13 @@ class TestTaskRepositoryCreate:
 
     async def test_create_persists_status(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user: UserRelEntitySchema,
         create_task_schema_factory: Callable[..., CreateTaskSchema],
     ) -> None:
         """Verify that create() correctly persists the status field."""
         # Arrange
-        repo = TaskRepository(session)
+        repo = TaskRepository(db_client)
         task_status = TaskStatus.PENDING
         task_data = create_task_schema_factory(user_id=user.id, status=task_status)
 
@@ -98,13 +97,13 @@ class TestTaskRepositoryCreate:
 
     async def test_create_persists_progress(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user: UserRelEntitySchema,
         create_task_schema_factory: Callable[..., CreateTaskSchema],
     ) -> None:
         """Verify that create() correctly persists the progress field."""
         # Arrange
-        repo = TaskRepository(session)
+        repo = TaskRepository(db_client)
         progress = 0.5
         task_data = create_task_schema_factory(user_id=user.id, progress=progress)
 
@@ -116,13 +115,13 @@ class TestTaskRepositoryCreate:
 
     async def test_create_persists_error_log_none(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user: UserRelEntitySchema,
         create_task_schema_factory: Callable[..., CreateTaskSchema],
     ) -> None:
         """Verify that create() correctly persists error_log=None."""
         # Arrange
-        repo = TaskRepository(session)
+        repo = TaskRepository(db_client)
         task_data = create_task_schema_factory(user_id=user.id, error_log=None)
 
         # Act
@@ -133,13 +132,13 @@ class TestTaskRepositoryCreate:
 
     async def test_create_persists_error_log_with_message(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user: UserRelEntitySchema,
         create_task_schema_factory: Callable[..., CreateTaskSchema],
     ) -> None:
         """Verify that create() correctly persists error_log with error message."""
         # Arrange
-        repo = TaskRepository(session)
+        repo = TaskRepository(db_client)
         error_message = "Connection timeout after 30 seconds"
         task_data = create_task_schema_factory(user_id=user.id, error_log=error_message)
 
@@ -151,13 +150,13 @@ class TestTaskRepositoryCreate:
 
     async def test_create_persists_input_params(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user: UserRelEntitySchema,
         create_task_schema_factory: Callable[..., CreateTaskSchema],
     ) -> None:
         """Verify that create() correctly persists input_params field."""
         # Arrange
-        repo = TaskRepository(session)
+        repo = TaskRepository(db_client)
         input_params = {"interview_id": str(uuid.uuid4()), "persona_count": 5}
         task_data = create_task_schema_factory(user_id=user.id, input_params=input_params)
 
@@ -169,13 +168,13 @@ class TestTaskRepositoryCreate:
 
     async def test_create_generates_created_at_timestamp(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user: UserRelEntitySchema,
         create_task_schema_factory: Callable[..., CreateTaskSchema],
     ) -> None:
         """Verify that create() automatically generates created_at timestamp."""
         # Arrange
-        repo = TaskRepository(session)
+        repo = TaskRepository(db_client)
         task_data = create_task_schema_factory(user_id=user.id)
 
         # Act
@@ -186,13 +185,13 @@ class TestTaskRepositoryCreate:
 
     async def test_create_generates_updated_at_timestamp(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user: UserRelEntitySchema,
         create_task_schema_factory: Callable[..., CreateTaskSchema],
     ) -> None:
         """Verify that create() automatically generates updated_at timestamp."""
         # Arrange
-        repo = TaskRepository(session)
+        repo = TaskRepository(db_client)
         task_data = create_task_schema_factory(user_id=user.id)
 
         # Act
@@ -203,13 +202,13 @@ class TestTaskRepositoryCreate:
 
     async def test_create_two_tasks_have_different_ids(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user: UserRelEntitySchema,
         create_task_schema_factory: Callable[..., CreateTaskSchema],
     ) -> None:
         """Verify that multiple create() calls generate unique IDs."""
         # Arrange
-        repo = TaskRepository(session)
+        repo = TaskRepository(db_client)
         data_first = create_task_schema_factory(user_id=user.id)
         data_second = create_task_schema_factory(user_id=user.id)
 
@@ -222,13 +221,13 @@ class TestTaskRepositoryCreate:
 
     async def test_create_loads_user_relationship(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user: UserRelEntitySchema,
         create_task_schema_factory: Callable[..., CreateTaskSchema],
     ) -> None:
         """Verify that create() eagerly loads the user relationship."""
         # Arrange
-        repo = TaskRepository(session)
+        repo = TaskRepository(db_client)
         task_data = create_task_schema_factory(user_id=user.id)
 
         # Act
@@ -239,13 +238,13 @@ class TestTaskRepositoryCreate:
 
     async def test_create_user_relationship_has_correct_id(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user: UserRelEntitySchema,
         create_task_schema_factory: Callable[..., CreateTaskSchema],
     ) -> None:
         """Verify that the loaded user relationship has the correct ID."""
         # Arrange
-        repo = TaskRepository(session)
+        repo = TaskRepository(db_client)
         task_data = create_task_schema_factory(user_id=user.id)
 
         # Act
@@ -256,13 +255,13 @@ class TestTaskRepositoryCreate:
 
     async def test_create_user_relationship_is_correct_type(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user: UserRelEntitySchema,
         create_task_schema_factory: Callable[..., CreateTaskSchema],
     ) -> None:
         """Verify that the user relationship is of correct schema type."""
         # Arrange
-        repo = TaskRepository(session)
+        repo = TaskRepository(db_client)
         task_data = create_task_schema_factory(user_id=user.id)
 
         # Act
@@ -273,13 +272,13 @@ class TestTaskRepositoryCreate:
 
     async def test_create_task_is_retrievable_from_db(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         user: UserRelEntitySchema,
         create_task_schema_factory: Callable[..., CreateTaskSchema],
     ) -> None:
         """Verify that created task can be retrieved via get_by_id()."""
         # Arrange
-        repo = TaskRepository(session)
+        repo = TaskRepository(db_client)
         task_data = create_task_schema_factory(user_id=user.id)
 
         # Act
@@ -299,12 +298,12 @@ class TestTaskRepositoryGetById:
 
     async def test_get_by_id_returns_correct_task(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         task: TaskRelEntitySchema,
     ) -> None:
         """Verify that get_by_id() retrieves the correct task by ID."""
         # Arrange
-        repo = TaskRepository(session)
+        repo = TaskRepository(db_client)
         assert task.id is not None
 
         # Act
@@ -318,11 +317,11 @@ class TestTaskRepositoryGetById:
 
     async def test_get_by_id_returns_none_for_nonexistent(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
     ) -> None:
         """Verify that get_by_id() returns None for non-existent ID."""
         # Arrange
-        repo = TaskRepository(session)
+        repo = TaskRepository(db_client)
 
         # Act
         task_result = await repo.get_by_id(uuid.uuid4())
@@ -332,12 +331,12 @@ class TestTaskRepositoryGetById:
 
     async def test_get_by_id_returns_task_rel_entity_schema(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         task: TaskRelEntitySchema,
     ) -> None:
         """Verify that get_by_id() returns TaskRelEntitySchema instance."""
         # Arrange
-        repo = TaskRepository(session)
+        repo = TaskRepository(db_client)
         assert task.id is not None
 
         # Act
@@ -348,12 +347,12 @@ class TestTaskRepositoryGetById:
 
     async def test_get_by_id_loads_user_relationship(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         task: TaskRelEntitySchema,
     ) -> None:
         """Verify that get_by_id() eagerly loads the user relationship."""
         # Arrange
-        repo = TaskRepository(session)
+        repo = TaskRepository(db_client)
         assert task.id is not None
 
         # Act
@@ -365,12 +364,12 @@ class TestTaskRepositoryGetById:
 
     async def test_get_by_id_user_relationship_has_correct_id(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         task: TaskRelEntitySchema,
     ) -> None:
         """Verify that the loaded user relationship has the correct ID."""
         # Arrange
-        repo = TaskRepository(session)
+        repo = TaskRepository(db_client)
         assert task.id is not None
 
         # Act
@@ -382,12 +381,12 @@ class TestTaskRepositoryGetById:
 
     async def test_get_by_id_user_relationship_is_correct_type(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         task: TaskRelEntitySchema,
     ) -> None:
         """Verify that the user relationship is of correct schema type."""
         # Arrange
-        repo = TaskRepository(session)
+        repo = TaskRepository(db_client)
         assert task.id is not None
 
         # Act
@@ -403,11 +402,11 @@ class TestTaskRepositoryGetAll:
 
     async def test_get_all_returns_empty_list_when_no_tasks(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
     ) -> None:
         """Verify that get_all() returns empty list when no tasks exist."""
         # Arrange
-        repo = TaskRepository(session)
+        repo = TaskRepository(db_client)
 
         # Act
         task_result = await repo.get_all()
@@ -417,12 +416,12 @@ class TestTaskRepositoryGetAll:
 
     async def test_get_all_returns_all_created_tasks(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         task_factory: Callable[..., TaskRelEntitySchema],
     ) -> None:
         """Verify that get_all() returns all persisted tasks."""
         # Arrange
-        repo = TaskRepository(session)
+        repo = TaskRepository(db_client)
         await task_factory()
         await task_factory()
         await task_factory()
@@ -435,12 +434,12 @@ class TestTaskRepositoryGetAll:
 
     async def test_get_all_returns_list_of_task_rel_entity_schemas(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         task_factory: Callable[..., TaskRelEntitySchema],
     ) -> None:
         """Verify that get_all() returns list of TaskRelEntitySchema instances."""
         # Arrange
-        repo = TaskRepository(session)
+        repo = TaskRepository(db_client)
         await task_factory()
 
         # Act
@@ -451,12 +450,12 @@ class TestTaskRepositoryGetAll:
 
     async def test_get_all_limit_restricts_result_count(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         task_factory: Callable[..., TaskRelEntitySchema],
     ) -> None:
         """Verify that get_all() respects the limit parameter."""
         # Arrange
-        repo = TaskRepository(session)
+        repo = TaskRepository(db_client)
         for _ in range(5):
             await task_factory()
 
@@ -468,12 +467,12 @@ class TestTaskRepositoryGetAll:
 
     async def test_get_all_offset_skips_records(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         task_factory: Callable[..., TaskRelEntitySchema],
     ) -> None:
         """Verify that get_all() respects the offset parameter."""
         # Arrange
-        repo = TaskRepository(session)
+        repo = TaskRepository(db_client)
         for _ in range(4):
             await task_factory()
 
@@ -486,12 +485,12 @@ class TestTaskRepositoryGetAll:
 
     async def test_get_all_offset_returns_non_overlapping_pages(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         task_factory: Callable[..., TaskRelEntitySchema],
     ) -> None:
         """Verify that get_all() pagination returns non-overlapping results."""
         # Arrange
-        repo = TaskRepository(session)
+        repo = TaskRepository(db_client)
         for _ in range(4):
             await task_factory()
 
@@ -506,12 +505,12 @@ class TestTaskRepositoryGetAll:
 
     async def test_get_all_tasks_have_loaded_user_relationships(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         task_factory: Callable[..., TaskRelEntitySchema],
     ) -> None:
         """Verify that get_all() eagerly loads user relationships for all tasks."""
         # Arrange
-        repo = TaskRepository(session)
+        repo = TaskRepository(db_client)
         await task_factory()
         await task_factory()
 
@@ -528,11 +527,11 @@ class TestTaskRepositoryGetCount:
 
     async def test_get_count_returns_zero_on_empty_table(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
     ) -> None:
         """Verify that get_count() returns 0 when no tasks exist."""
         # Arrange
-        repo = TaskRepository(session)
+        repo = TaskRepository(db_client)
 
         # Act
         count = await repo.get_count()
@@ -542,12 +541,12 @@ class TestTaskRepositoryGetCount:
 
     async def test_get_count_reflects_created_tasks(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         task_factory: Callable[..., TaskRelEntitySchema],
     ) -> None:
         """Verify that get_count() returns the correct number of tasks."""
         # Arrange
-        repo = TaskRepository(session)
+        repo = TaskRepository(db_client)
         await task_factory()
         await task_factory()
 
@@ -559,12 +558,12 @@ class TestTaskRepositoryGetCount:
 
     async def test_get_count_decreases_after_delete(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         task_factory: Callable[..., TaskRelEntitySchema],
     ) -> None:
         """Verify that get_count() decreases after deleting a task."""
         # Arrange
-        repo = TaskRepository(session)
+        repo = TaskRepository(db_client)
         task = await task_factory()
         await task_factory()
 
@@ -577,12 +576,12 @@ class TestTaskRepositoryGetCount:
 
     async def test_get_count_increments_with_each_create(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         task_factory: Callable[..., TaskRelEntitySchema],
     ) -> None:
         """Verify that get_count() increments correctly with each creation."""
         # Arrange
-        repo = TaskRepository(session)
+        repo = TaskRepository(db_client)
 
         # Act & Assert
         for expected in range(1, 4):
@@ -595,11 +594,11 @@ class TestTaskRepositoryUpdateById:
 
     async def test_update_returns_none_for_nonexistent(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
     ) -> None:
         """Verify that update_by_id() returns None for non-existent ID."""
         # Arrange
-        repo = TaskRepository(session)
+        repo = TaskRepository(db_client)
         update_data = UpdateTaskSchema(status=TaskStatus.COMPLETED)
 
         # Act
@@ -610,12 +609,12 @@ class TestTaskRepositoryUpdateById:
 
     async def test_update_type(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         task: TaskRelEntitySchema,
     ) -> None:
         """Verify that update_by_id() correctly updates type field."""
         # Arrange
-        repo = TaskRepository(session)
+        repo = TaskRepository(db_client)
         assert task.id is not None
         new_type = TaskType.REPORT_GENERATION
         update_data = UpdateTaskSchema(type=new_type)
@@ -629,12 +628,12 @@ class TestTaskRepositoryUpdateById:
 
     async def test_update_status(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         task: TaskRelEntitySchema,
     ) -> None:
         """Verify that update_by_id() correctly updates status field."""
         # Arrange
-        repo = TaskRepository(session)
+        repo = TaskRepository(db_client)
         assert task.id is not None
         new_status = TaskStatus.COMPLETED
         update_data = UpdateTaskSchema(status=new_status)
@@ -648,12 +647,12 @@ class TestTaskRepositoryUpdateById:
 
     async def test_update_progress(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         task: TaskRelEntitySchema,
     ) -> None:
         """Verify that update_by_id() correctly updates progress field."""
         # Arrange
-        repo = TaskRepository(session)
+        repo = TaskRepository(db_client)
         assert task.id is not None
         new_progress = 0.75
         update_data = UpdateTaskSchema(progress=new_progress)
@@ -667,12 +666,12 @@ class TestTaskRepositoryUpdateById:
 
     async def test_update_error_log(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         task: TaskRelEntitySchema,
     ) -> None:
         """Verify that update_by_id() correctly updates error_log field."""
         # Arrange
-        repo = TaskRepository(session)
+        repo = TaskRepository(db_client)
         assert task.id is not None
         new_error = "Database connection lost"
         update_data = UpdateTaskSchema(error_log=new_error)
@@ -686,12 +685,12 @@ class TestTaskRepositoryUpdateById:
 
     async def test_update_input_params(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         task: TaskRelEntitySchema,
     ) -> None:
         """Verify that update_by_id() correctly updates input_params field."""
         # Arrange
-        repo = TaskRepository(session)
+        repo = TaskRepository(db_client)
         assert task.id is not None
         new_params = {"updated": True, "retry_count": 3}
         update_data = UpdateTaskSchema(input_params=new_params)
@@ -705,12 +704,12 @@ class TestTaskRepositoryUpdateById:
 
     async def test_update_does_not_change_unspecified_fields(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         task: TaskRelEntitySchema,
     ) -> None:
         """Verify that update_by_id() only modifies specified fields."""
         # Arrange
-        repo = TaskRepository(session)
+        repo = TaskRepository(db_client)
         assert task.id is not None
         original_type = task.type
         original_user_id = task.user_id
@@ -726,12 +725,12 @@ class TestTaskRepositoryUpdateById:
 
     async def test_update_persists_to_database(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         task: TaskRelEntitySchema,
     ) -> None:
         """Verify that update_by_id() changes are persisted to the database."""
         # Arrange
-        repo = TaskRepository(session)
+        repo = TaskRepository(db_client)
         assert task.id is not None
         update_data = UpdateTaskSchema(status=TaskStatus.FAILED)
 
@@ -745,12 +744,12 @@ class TestTaskRepositoryUpdateById:
 
     async def test_update_returns_task_rel_entity_schema(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         task: TaskRelEntitySchema,
     ) -> None:
         """Verify that update_by_id() returns TaskRelEntitySchema instance."""
         # Arrange
-        repo = TaskRepository(session)
+        repo = TaskRepository(db_client)
         assert task.id is not None
         update_data = UpdateTaskSchema(progress=1.0)
 
@@ -762,12 +761,12 @@ class TestTaskRepositoryUpdateById:
 
     async def test_update_preserves_user_relationship(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         task: TaskRelEntitySchema,
     ) -> None:
         """Verify that update_by_id() preserves the user relationship."""
         # Arrange
-        repo = TaskRepository(session)
+        repo = TaskRepository(db_client)
         assert task.id is not None
         update_data = UpdateTaskSchema(status=TaskStatus.COMPLETED)
 
@@ -782,12 +781,12 @@ class TestTaskRepositoryUpdateById:
 
     async def test_update_does_not_change_id(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         task: TaskRelEntitySchema,
     ) -> None:
         """Verify that update_by_id() does not modify the task ID."""
         # Arrange
-        repo = TaskRepository(session)
+        repo = TaskRepository(db_client)
         assert task.id is not None
         original_id = task.id
         update_data = UpdateTaskSchema(status=TaskStatus.CANCELLED)
@@ -805,12 +804,12 @@ class TestTaskRepositoryDeleteById:
 
     async def test_delete_returns_deleted_id(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         task: TaskRelEntitySchema,
     ) -> None:
         """Verify that delete_by_id() returns the ID of the deleted task."""
         # Arrange
-        repo = TaskRepository(session)
+        repo = TaskRepository(db_client)
         assert task.id is not None
 
         # Act
@@ -821,12 +820,12 @@ class TestTaskRepositoryDeleteById:
 
     async def test_delete_returns_uuid_type(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         task: TaskRelEntitySchema,
     ) -> None:
         """Verify that delete_by_id() returns a UUID type."""
         # Arrange
-        repo = TaskRepository(session)
+        repo = TaskRepository(db_client)
         assert task.id is not None
 
         # Act
@@ -837,11 +836,11 @@ class TestTaskRepositoryDeleteById:
 
     async def test_delete_returns_none_for_nonexistent(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
     ) -> None:
         """Verify that delete_by_id() returns None for non-existent ID."""
         # Arrange
-        repo = TaskRepository(session)
+        repo = TaskRepository(db_client)
 
         # Act
         task_result = await repo.delete_by_id(uuid.uuid4())
@@ -851,12 +850,12 @@ class TestTaskRepositoryDeleteById:
 
     async def test_delete_removes_task_from_database(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         task: TaskRelEntitySchema,
     ) -> None:
         """Verify that delete_by_id() removes the task from the database."""
         # Arrange
-        repo = TaskRepository(session)
+        repo = TaskRepository(db_client)
         assert task.id is not None
 
         # Act
@@ -868,12 +867,12 @@ class TestTaskRepositoryDeleteById:
 
     async def test_delete_does_not_affect_other_tasks(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         task_factory: Callable[..., TaskRelEntitySchema],
     ) -> None:
         """Verify that delete_by_id() only deletes the specified task."""
         # Arrange
-        repo = TaskRepository(session)
+        repo = TaskRepository(db_client)
         to_delete = await task_factory()
         to_keep = await task_factory()
         assert to_delete.id is not None
@@ -889,12 +888,12 @@ class TestTaskRepositoryDeleteById:
 
     async def test_delete_decreases_count(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         task_factory: Callable[..., TaskRelEntitySchema],
     ) -> None:
         """Verify that delete_by_id() decreases the total task count."""
         # Arrange
-        repo = TaskRepository(session)
+        repo = TaskRepository(db_client)
         task1 = await task_factory()
         await task_factory()
         assert task1.id is not None
@@ -908,12 +907,12 @@ class TestTaskRepositoryDeleteById:
 
     async def test_delete_is_idempotent_on_second_call(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         task: TaskRelEntitySchema,
     ) -> None:
         """Verify that delete_by_id() is idempotent (returns None on second call)."""
         # Arrange
-        repo = TaskRepository(session)
+        repo = TaskRepository(db_client)
         assert task.id is not None
 
         # Act

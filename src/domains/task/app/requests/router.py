@@ -20,23 +20,23 @@ from src.domains.task.app.requests.schema import (  # noqa: WPS235
 )
 from src.domains.task.app.usecases.service import TaskService
 from src.domains.task.exceptions import TaskError, TaskNotFound
-from src.infrastructure.containers.domain import TaskContainer
+from src.infrastructure.containers.domain import DomainContainer
 from src.schemas.api_base import ResponseBase, StatusType
 
 _logger = get_logger(__name__)
 
 router = APIRouter(
-    prefix="/task",
-    tags=["task"],
+    prefix="/tasks",
+    tags=["tasks"],
 )
 
 
-@router.post("/", response_model=PostCreateTaskResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=PostCreateTaskResponse | ResponseBase, status_code=status.HTTP_201_CREATED)
 @inject
 async def create_task(
     response: Response,
     request_data: PostCreateTaskRequest,
-    task_service: TaskService = Depends(Provide[TaskContainer.task_service]),
+    task_service: TaskService = Depends(Provide[DomainContainer.task.task_service]),
 ) -> PostCreateTaskResponse | ResponseBase:
     """Create a new task.
 
@@ -62,11 +62,11 @@ async def create_task(
     return PostCreateTaskResponse(msg=new_task, status=StatusType.SUCCESS)
 
 
-@router.get("/count", response_model=GetCountTaskResponse, status_code=status.HTTP_200_OK)
+@router.get("/count", response_model=GetCountTaskResponse | ResponseBase, status_code=status.HTTP_200_OK)
 @inject
 async def count_tasks(
     response: Response,
-    task_service: TaskService = Depends(Provide[TaskContainer.task_service]),
+    task_service: TaskService = Depends(Provide[DomainContainer.task.task_service]),
 ) -> GetCountTaskResponse | ResponseBase:
     """Get total count of tasks.
 
@@ -87,12 +87,12 @@ async def count_tasks(
     return GetCountTaskResponse(msg=count, status=StatusType.SUCCESS)
 
 
-@router.get("/", response_model=GetTasksResponse, status_code=status.HTTP_200_OK)
+@router.get("/", response_model=GetTasksResponse | ResponseBase, status_code=status.HTTP_200_OK)
 @inject
 async def get_tasks(
     response: Response,
     pagination: Annotated[GetTasksRequest, Query()],
-    task_service: TaskService = Depends(Provide[TaskContainer.task_service]),
+    task_service: TaskService = Depends(Provide[DomainContainer.task.task_service]),
 ) -> GetTasksResponse | ResponseBase:
     """Get a paginated list of tasks.
 
@@ -114,12 +114,12 @@ async def get_tasks(
     return GetTasksResponse(msg=tasks, status=StatusType.SUCCESS)
 
 
-@router.get("/{task_id}", response_model=GetTaskResponse, status_code=status.HTTP_200_OK)
+@router.get("/{task_id}", response_model=GetTaskResponse | ResponseBase, status_code=status.HTTP_200_OK)
 @inject
 async def get_task(
     response: Response,
     task_id: uuid.UUID,
-    task_service: TaskService = Depends(Provide[TaskContainer.task_service]),
+    task_service: TaskService = Depends(Provide[DomainContainer.task.task_service]),
 ) -> GetTaskResponse | ResponseBase:
     """Get a single task by ID.
 
@@ -145,13 +145,13 @@ async def get_task(
     return GetTaskResponse(msg=task, status=StatusType.SUCCESS)
 
 
-@router.put("/{task_id}", response_model=PutUpdateTaskResponse, status_code=status.HTTP_200_OK)
+@router.put("/{task_id}", response_model=PutUpdateTaskResponse | ResponseBase, status_code=status.HTTP_200_OK)
 @inject
 async def update_task(
     response: Response,
     task_id: uuid.UUID,
     request_data: PutUpdateTaskRequest,
-    task_service: TaskService = Depends(Provide[TaskContainer.task_service]),
+    task_service: TaskService = Depends(Provide[DomainContainer.task.task_service]),
 ) -> PutUpdateTaskResponse | ResponseBase:
     """Update a task by ID.
 
@@ -181,12 +181,12 @@ async def update_task(
     return PutUpdateTaskResponse(msg=updated_task, status=StatusType.SUCCESS)
 
 
-@router.delete("/{task_id}", response_model=DeleteTaskResponse, status_code=status.HTTP_200_OK)
+@router.delete("/{task_id}", response_model=DeleteTaskResponse | ResponseBase, status_code=status.HTTP_200_OK)
 @inject
 async def delete_task(
     response: Response,
     task_id: uuid.UUID,
-    task_service: TaskService = Depends(Provide[TaskContainer.task_service]),
+    task_service: TaskService = Depends(Provide[DomainContainer.task.task_service]),
 ) -> DeleteTaskResponse | ResponseBase:
     """Delete a task by ID.
 

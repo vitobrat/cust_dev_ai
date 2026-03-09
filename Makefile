@@ -5,15 +5,17 @@ PYTEST := $(PYTHON) -m pytest
 DC_DEV := docker compose -f ./docker/docker-compose.dev.yaml
 ENV_FILE := config/.env
 
-# Цвета для вывода (для красоты)
-YELLOW := $(shell tput setaf 3)
-RESET  := $(shell tput sgr0)
+# Переменные docker
+IMAGE_NAME = cust_dev_ai_app
+VERSION = $(shell git rev-parse --short HEAD || echo "latest")
+REGISTRY = victorbratko
+IMAGE_TAG = $(REGISTRY)/$(IMAGE_NAME):$(VERSION)
 
 .PHONY: help install-lint lint tests unit integration up down logs
 
 ## help: Показать это сообщение
 help:
-	@echo "$(YELLOW)Доступные команды:$(RESET)"
+	@echo "Доступные команды:"
 	@sed -n 's/^##//p' $< | column -t -s ':' |  sed -e 's/^/ /'
 
 
@@ -45,14 +47,35 @@ add_migration:
 roll_up_migrations:
 	PYTHONPATH=$(PYTHONPATH_APP) alembic upgrade head
 
+## run: Развернуть локально fast api сервер согласно конфигурационному файлу
+run:
+	PYTHONPATH=$(PYTHONPATH_APP) python src/app.py
+
+## login: Авторизация в Docker Hub
+login:
+	docker login -u victorbratko
+
+## build: Собрать образ приложения для прода
+build:
+	docker build \
+		--target prod \
+		-t $(IMAGE_TAG) \
+		-t $(REGISTRY)/$(IMAGE_NAME):latest \
+		-f ./docker/Dockerfile .
+
+## push: Отправить образ в Docker Hub/Registry
+push:
+	docker push $(IMAGE_TAG)
+	docker push $(REGISTRY)/$(IMAGE_NAME):latest
+
 ## up: Запустить dev-окружение (подгружает .env автоматически через compose)
 up:
-	$(DC_DEV) --env-file $(ENV_FILE) up -d
+	VERSION=$(VERSION) $(DC_DEV) --env-file $(ENV_FILE) up -d --build
 
 ## down: Остановить dev-окружение
 down:
-	$(DC_DEV) down
+	$(DC_DEV) --env-file $(ENV_FILE) down
 
 ## logs: Посмотреть логи БД (или другого сервиса)
 logs:
-	$(DC_DEV) logs -f db
+	$(DC_DEV) --env-file $(ENV_FILE) logs -f app

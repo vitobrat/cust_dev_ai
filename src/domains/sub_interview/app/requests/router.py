@@ -23,23 +23,23 @@ from src.domains.sub_interview.exceptions import (
     SubInterviewError,
     SubInterviewNotFound,
 )
-from src.infrastructure.containers.domain import SubInterviewContainer
+from src.infrastructure.containers.domain import DomainContainer
 from src.schemas.api_base import ResponseBase, StatusType
 
 _logger = get_logger(__name__)
 
 router = APIRouter(
-    prefix="/sub-interview",
-    tags=["sub-interview"],
+    prefix="/sub_interviews",
+    tags=["sub_interviews"],
 )
 
 
-@router.post("/", response_model=PostCreateSubInterviewResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=PostCreateSubInterviewResponse | ResponseBase, status_code=status.HTTP_201_CREATED)
 @inject
 async def create_sub_interview(
     response: Response,
     request_data: PostCreateSubInterviewRequest,
-    sub_interview_service: SubInterviewService = Depends(Provide[SubInterviewContainer.sub_interview_service]),
+    sub_interview_service: SubInterviewService = Depends(Provide[DomainContainer.sub_interview.sub_interview_service]),
 ) -> PostCreateSubInterviewResponse | ResponseBase:
     """Create a new sub-interview.
 
@@ -65,11 +65,11 @@ async def create_sub_interview(
     return PostCreateSubInterviewResponse(msg=new_sub_interview, status=StatusType.SUCCESS)
 
 
-@router.get("/count", response_model=GetCountSubInterviewResponse, status_code=status.HTTP_200_OK)
+@router.get("/count", response_model=GetCountSubInterviewResponse | ResponseBase, status_code=status.HTTP_200_OK)
 @inject
 async def count_sub_interviews(
     response: Response,
-    sub_interview_service: SubInterviewService = Depends(Provide[SubInterviewContainer.sub_interview_service]),
+    sub_interview_service: SubInterviewService = Depends(Provide[DomainContainer.sub_interview.sub_interview_service]),
 ) -> GetCountSubInterviewResponse | ResponseBase:
     """Get total count of sub-interviews.
 
@@ -90,12 +90,12 @@ async def count_sub_interviews(
     return GetCountSubInterviewResponse(msg=count, status=StatusType.SUCCESS)
 
 
-@router.get("/", response_model=GetSubInterviewsResponse, status_code=status.HTTP_200_OK)
+@router.get("/", response_model=GetSubInterviewsResponse | ResponseBase, status_code=status.HTTP_200_OK)
 @inject
 async def get_sub_interviews(
     response: Response,
     pagination: Annotated[GetSubInterviewsRequest, Query()],
-    sub_interview_service: SubInterviewService = Depends(Provide[SubInterviewContainer.sub_interview_service]),
+    sub_interview_service: SubInterviewService = Depends(Provide[DomainContainer.sub_interview.sub_interview_service]),
 ) -> GetSubInterviewsResponse | ResponseBase:
     """Get a paginated list of sub-interviews.
 
@@ -120,12 +120,16 @@ async def get_sub_interviews(
     return GetSubInterviewsResponse(msg=sub_interviews, status=StatusType.SUCCESS)
 
 
-@router.get("/{sub_interview_id}", response_model=GetSubInterviewResponse, status_code=status.HTTP_200_OK)
+@router.get(
+    "/{sub_interview_id}",
+    response_model=GetSubInterviewResponse | ResponseBase,
+    status_code=status.HTTP_200_OK,
+)
 @inject
 async def get_sub_interview(
     response: Response,
     sub_interview_id: uuid.UUID,
-    sub_interview_service: SubInterviewService = Depends(Provide[SubInterviewContainer.sub_interview_service]),
+    sub_interview_service: SubInterviewService = Depends(Provide[DomainContainer.sub_interview.sub_interview_service]),
 ) -> GetSubInterviewResponse | ResponseBase:
     """Get a single sub-interview by ID.
 
@@ -151,13 +155,17 @@ async def get_sub_interview(
     return GetSubInterviewResponse(msg=sub_interview, status=StatusType.SUCCESS)
 
 
-@router.put("/{sub_interview_id}", response_model=PutUpdateSubInterviewResponse, status_code=status.HTTP_200_OK)
+@router.put(
+    "/{sub_interview_id}",
+    response_model=PutUpdateSubInterviewResponse | ResponseBase,
+    status_code=status.HTTP_200_OK,
+)
 @inject
 async def update_sub_interview(
     response: Response,
     sub_interview_id: uuid.UUID,
     request_data: PutUpdateSubInterviewRequest,
-    sub_interview_service: SubInterviewService = Depends(Provide[SubInterviewContainer.sub_interview_service]),
+    sub_interview_service: SubInterviewService = Depends(Provide[DomainContainer.sub_interview.sub_interview_service]),
 ) -> PutUpdateSubInterviewResponse | ResponseBase:
     """Update a sub-interview by ID.
 
@@ -187,12 +195,16 @@ async def update_sub_interview(
     return PutUpdateSubInterviewResponse(msg=updated_sub_interview, status=StatusType.SUCCESS)
 
 
-@router.delete("/{sub_interview_id}", response_model=DeleteSubInterviewResponse, status_code=status.HTTP_200_OK)
+@router.delete(
+    "/{sub_interview_id}",
+    response_model=DeleteSubInterviewResponse | ResponseBase,
+    status_code=status.HTTP_200_OK,
+)
 @inject
 async def delete_sub_interview(
     response: Response,
     sub_interview_id: uuid.UUID,
-    sub_interview_service: SubInterviewService = Depends(Provide[SubInterviewContainer.sub_interview_service]),
+    sub_interview_service: SubInterviewService = Depends(Provide[DomainContainer.sub_interview.sub_interview_service]),
 ) -> DeleteSubInterviewResponse | ResponseBase:
     """Delete a sub-interview by ID.
 

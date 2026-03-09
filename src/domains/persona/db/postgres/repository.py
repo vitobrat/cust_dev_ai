@@ -45,18 +45,17 @@ class PersonaRepository(
         Returns:
             Created persona entity with generated ID and timestamps.
         """
-        persona = PersonasOrm(
-            demographic_state=create_data.demographic_state.model_dump(),
-            bio_description=create_data.bio_description,
-            is_verified=create_data.is_verified,
-            interview_id=create_data.interview_id,
-        )
-
-        self._session.add(persona)
-        await self._session.flush()
-        await self._session.refresh(persona)
-
-        return PersonaRelEntitySchema.model_validate(persona)
+        async with self._db_client.session() as session:
+            persona = PersonasOrm(
+                demographic_state=create_data.demographic_state.model_dump(),
+                bio_description=create_data.bio_description,
+                is_verified=create_data.is_verified,
+                interview_id=create_data.interview_id,
+            )
+            session.add(persona)
+            await session.flush()
+            await session.refresh(persona)
+            return PersonaRelEntitySchema.model_validate(persona)
 
     async def get_by_id(
         self,
@@ -70,12 +69,11 @@ class PersonaRepository(
         Returns:
             Persona entity with loaded interview relation if found, None otherwise.
         """
-        persona = await self._session.get(PersonasOrm, entity_id)
-
-        if persona is None:
-            return None
-
-        return PersonaRelEntitySchema.model_validate(persona)
+        async with self._db_client.session() as session:
+            persona = await session.get(PersonasOrm, entity_id)
+            if persona is None:
+                return None
+            return PersonaRelEntitySchema.model_validate(persona)
 
     async def get_all(
         self,
@@ -91,11 +89,11 @@ class PersonaRepository(
         Returns:
             List of persona entities ordered by database default.
         """
-        query = select(PersonasOrm).limit(limit).offset(offset)
-        persona_result = await self._session.execute(query)
-        personas = persona_result.scalars().all()
-
-        return [PersonaRelEntitySchema.model_validate(persona) for persona in personas]
+        async with self._db_client.session() as session:
+            query = select(PersonasOrm).limit(limit).offset(offset)
+            persona_result = await session.execute(query)
+            personas = persona_result.scalars().all()
+            return [PersonaRelEntitySchema.model_validate(persona) for persona in personas]
 
     async def get_count(self) -> int:
         """Get total count of personas in the database.
@@ -103,10 +101,10 @@ class PersonaRepository(
         Returns:
             Total number of persona records.
         """
-        query = select(func.count()).select_from(PersonasOrm)
-        persona_result = await self._session.execute(query)
-
-        return persona_result.scalar_one()
+        async with self._db_client.session() as session:
+            query = select(func.count()).select_from(PersonasOrm)
+            persona_result = await session.execute(query)
+            return persona_result.scalar_one()
 
     async def update_by_id(
         self,
@@ -124,20 +122,18 @@ class PersonaRepository(
         Returns:
             Updated persona entity if found, None otherwise.
         """
-        persona = await self._session.get(PersonasOrm, entity_id)
+        async with self._db_client.session() as session:
+            persona = await session.get(PersonasOrm, entity_id)
+            if persona is None:
+                return None
 
-        if persona is None:
-            return None
+            update_fields = update_data.model_dump(exclude_unset=True)
+            for field, field_value in update_fields.items():
+                setattr(persona, field, field_value)
 
-        update_fields = update_data.model_dump(exclude_unset=True)
-
-        for field, field_value in update_fields.items():
-            setattr(persona, field, field_value)
-
-        await self._session.flush()
-        await self._session.refresh(persona)
-
-        return PersonaRelEntitySchema.model_validate(persona)
+            await session.flush()
+            await session.refresh(persona)
+            return PersonaRelEntitySchema.model_validate(persona)
 
     async def delete_by_id(
         self,
@@ -151,12 +147,11 @@ class PersonaRepository(
         Returns:
             UUID of deleted persona if found, None otherwise.
         """
-        persona = await self._session.get(PersonasOrm, entity_id)
+        async with self._db_client.session() as session:
+            persona = await session.get(PersonasOrm, entity_id)
+            if persona is None:
+                return None
 
-        if persona is None:
-            return None
-
-        await self._session.delete(persona)
-        await self._session.flush()
-
-        return entity_id
+            await session.delete(persona)
+            await session.flush()
+            return entity_id

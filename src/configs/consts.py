@@ -1,5 +1,6 @@
 import os
 import types
+from enum import Enum
 from pathlib import Path
 
 _DEFAULT_PROJECT_PATH = Path(__file__).resolve().parent.parent.parent
@@ -10,7 +11,16 @@ DEFAULT_GRAPH_RECURSION_LIMIT = 1
 
 PROJECT_ROOT = Path(os.getenv("PROJECT_ROOT", _DEFAULT_PROJECT_PATH))
 
-valid_log_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+
+class LogLevels(Enum):
+    """Valid log level values accepted by uvicorn and the logging module."""
+
+    DEBUG: str = "DEBUG"
+    INFO: str = "INFO"  # noqa: WPS110
+    WARNING: str = "WARNING"
+    ERROR: str = "ERROR"
+    CRITICAL: str = "CRITICAL"
+
 
 INSTRUCTOR_ROLE_MAP = types.MappingProxyType(
     {

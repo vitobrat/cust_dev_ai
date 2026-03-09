@@ -59,6 +59,7 @@ class PersonaContainer(containers.DeclarativeContainer):
 
     personas_repository: PersonaRepository = providers.Factory(
         PersonaRepository,
+        db_client=infrastructure.db_client,
     )
 
     prompt_builder: PersonaPromptManager = providers.Singleton(
@@ -108,8 +109,12 @@ class InterviewContainer(containers.DeclarativeContainer):
         interview_service: Factory for InterviewService instances.
     """
 
+    config: AppConfigs = providers.Configuration()
+    infrastructure: InfrastructureContainer = providers.DependenciesContainer()
+
     interviews_repository: InterviewRepository = providers.Factory(
         InterviewRepository,
+        db_client=infrastructure.db_client,
     )
 
     interview_service: InterviewService = providers.Factory(
@@ -128,8 +133,12 @@ class SubInterviewContainer(containers.DeclarativeContainer):
         sub_interview_service: Factory for SubInterviewService instances.
     """
 
+    config: AppConfigs = providers.Configuration()
+    infrastructure: InfrastructureContainer = providers.DependenciesContainer()
+
     sub_interviews_repository: SubInterviewRepository = providers.Factory(
         SubInterviewRepository,
+        db_client=infrastructure.db_client,
     )
 
     sub_interview_service: SubInterviewService = providers.Factory(
@@ -148,8 +157,12 @@ class TaskContainer(containers.DeclarativeContainer):
         task_service: Factory for TaskService instances.
     """
 
+    config: AppConfigs = providers.Configuration()
+    infrastructure: InfrastructureContainer = providers.DependenciesContainer()
+
     tasks_repository: TaskRepository = providers.Factory(
         TaskRepository,
+        db_client=infrastructure.db_client,
     )
 
     task_service: TaskService = providers.Factory(
@@ -168,8 +181,12 @@ class UserContainer(containers.DeclarativeContainer):
         user_service: Factory for UserService instances.
     """
 
+    config: AppConfigs = providers.Configuration()
+    infrastructure: InfrastructureContainer = providers.DependenciesContainer()
+
     users_repository: UserRepository = providers.Factory(
         UserRepository,
+        db_client=infrastructure.db_client,
     )
 
     user_service: UserService = providers.Factory(
@@ -195,7 +212,10 @@ class DomainContainer(containers.DeclarativeContainer):
     """
 
     config: AppConfigs = providers.Configuration()
-    infrastructure: InfrastructureContainer = providers.DependenciesContainer()
+    infrastructure = providers.Container(
+        InfrastructureContainer,
+        config=config,
+    )
 
     persona: PersonaContainer = providers.Container(
         PersonaContainer,
@@ -205,16 +225,21 @@ class DomainContainer(containers.DeclarativeContainer):
 
     interview: InterviewContainer = providers.Container(
         InterviewContainer,
+        infrastructure=infrastructure,
     )
 
     sub_interview: SubInterviewContainer = providers.Container(
         SubInterviewContainer,
+        infrastructure=infrastructure,
     )
 
     task: TaskContainer = providers.Container(
         TaskContainer,
+        infrastructure=infrastructure,
     )
 
     user: UserContainer = providers.Container(
         UserContainer,
+        config=config,
+        infrastructure=infrastructure,
     )

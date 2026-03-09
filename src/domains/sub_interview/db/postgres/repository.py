@@ -47,17 +47,16 @@ class SubInterviewRepository(
         Raises:
             SQLAlchemyError: If database operation fails.
         """
-        sub_interview = SubInterviewsOrm(
-            chat_history=create_data.chat_history,
-            status=create_data.status,
-            interview_id=create_data.interview_id,
-        )
-
-        self._session.add(sub_interview)
-        await self._session.flush()
-        await self._session.refresh(sub_interview)
-
-        return SubInterviewRelEntitySchema.model_validate(sub_interview)
+        async with self._db_client.session() as session:
+            sub_interview = SubInterviewsOrm(
+                chat_history=create_data.chat_history,
+                status=create_data.status,
+                interview_id=create_data.interview_id,
+            )
+            session.add(sub_interview)
+            await session.flush()
+            await session.refresh(sub_interview)
+            return SubInterviewRelEntitySchema.model_validate(sub_interview)
 
     async def get_by_id(
         self,
@@ -74,12 +73,11 @@ class SubInterviewRepository(
         Raises:
             SQLAlchemyError: If database operation fails.
         """
-        sub_interview = await self._session.get(SubInterviewsOrm, entity_id)
-
-        if sub_interview is None:
-            return None
-
-        return SubInterviewRelEntitySchema.model_validate(sub_interview)
+        async with self._db_client.session() as session:
+            sub_interview = await session.get(SubInterviewsOrm, entity_id)
+            if sub_interview is None:
+                return None
+            return SubInterviewRelEntitySchema.model_validate(sub_interview)
 
     async def get_all(
         self,
@@ -98,11 +96,11 @@ class SubInterviewRepository(
         Raises:
             SQLAlchemyError: If database operation fails.
         """
-        query = select(SubInterviewsOrm).limit(limit).offset(offset)
-        sub_interviews_result = await self._session.execute(query)
-        sub_interviews = sub_interviews_result.scalars().all()
-
-        return [SubInterviewRelEntitySchema.model_validate(sub_interview) for sub_interview in sub_interviews]
+        async with self._db_client.session() as session:
+            query = select(SubInterviewsOrm).limit(limit).offset(offset)
+            sub_interviews_result = await session.execute(query)
+            sub_interviews = sub_interviews_result.scalars().all()
+            return [SubInterviewRelEntitySchema.model_validate(si) for si in sub_interviews]
 
     async def get_count(self) -> int:
         """Get total count of sub-interviews in the database.
@@ -113,10 +111,10 @@ class SubInterviewRepository(
         Raises:
             SQLAlchemyError: If database operation fails.
         """
-        query = select(func.count()).select_from(SubInterviewsOrm)
-        users_result = await self._session.execute(query)
-
-        return users_result.scalar_one()
+        async with self._db_client.session() as session:
+            query = select(func.count()).select_from(SubInterviewsOrm)
+            count_result = await session.execute(query)
+            return count_result.scalar_one()
 
     async def update_by_id(
         self,
@@ -137,20 +135,18 @@ class SubInterviewRepository(
         Raises:
             SQLAlchemyError: If database operation fails.
         """
-        sub_interview = await self._session.get(SubInterviewsOrm, entity_id)
+        async with self._db_client.session() as session:
+            sub_interview = await session.get(SubInterviewsOrm, entity_id)
+            if sub_interview is None:
+                return None
 
-        if sub_interview is None:
-            return None
+            update_fields = update_data.model_dump(exclude_unset=True)
+            for field, field_value in update_fields.items():
+                setattr(sub_interview, field, field_value)
 
-        update_fields = update_data.model_dump(exclude_unset=True)
-
-        for field, user_value in update_fields.items():
-            setattr(sub_interview, field, user_value)
-
-        await self._session.flush()
-        await self._session.refresh(sub_interview)
-
-        return SubInterviewRelEntitySchema.model_validate(sub_interview)
+            await session.flush()
+            await session.refresh(sub_interview)
+            return SubInterviewRelEntitySchema.model_validate(sub_interview)
 
     async def delete_by_id(
         self,
@@ -167,12 +163,11 @@ class SubInterviewRepository(
         Raises:
             SQLAlchemyError: If database operation fails.
         """
-        sub_interview = await self._session.get(SubInterviewsOrm, entity_id)
+        async with self._db_client.session() as session:
+            sub_interview = await session.get(SubInterviewsOrm, entity_id)
+            if sub_interview is None:
+                return None
 
-        if sub_interview is None:
-            return None
-
-        await self._session.delete(sub_interview)
-        await self._session.flush()
-
-        return entity_id
+            await session.delete(sub_interview)
+            await session.flush()
+            return entity_id

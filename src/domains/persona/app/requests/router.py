@@ -23,23 +23,23 @@ from src.domains.persona.exceptions import (
     PersonaCreationFailed,
     PersonaNotFound,
 )
-from src.infrastructure.containers.domain import PersonaContainer
+from src.infrastructure.containers.domain import DomainContainer
 from src.schemas.api_base import ResponseBase, StatusType
 
 _logger = get_logger(__name__)
 
 router = APIRouter(
-    prefix="/persona",
-    tags=["persona"],
+    prefix="/personas",
+    tags=["personas"],
 )
 
 
-@router.post("/", response_model=PostCreatePersonaResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=PostCreatePersonaResponse | ResponseBase, status_code=status.HTTP_201_CREATED)
 @inject
 async def create_persona(
     response: Response,
     request_data: PostCreatePersonaRequest,
-    persona_service: PersonaService = Depends(Provide[PersonaContainer.persona_service]),
+    persona_service: PersonaService = Depends(Provide[DomainContainer.persona.persona_service]),
 ) -> PostCreatePersonaResponse | ResponseBase:
     """Create a new persona.
 
@@ -65,11 +65,11 @@ async def create_persona(
     return PostCreatePersonaResponse(msg=new_persona, status=StatusType.SUCCESS)
 
 
-@router.get("/count", response_model=GetCountPersonaResponse, status_code=status.HTTP_200_OK)
+@router.get("/count", response_model=GetCountPersonaResponse | ResponseBase, status_code=status.HTTP_200_OK)
 @inject
 async def count_personas(
     response: Response,
-    persona_service: PersonaService = Depends(Provide[PersonaContainer.persona_service]),
+    persona_service: PersonaService = Depends(Provide[DomainContainer.persona.persona_service]),
 ) -> GetCountPersonaResponse | ResponseBase:
     """Get total count of personas.
 
@@ -90,12 +90,12 @@ async def count_personas(
     return GetCountPersonaResponse(msg=count, status=StatusType.SUCCESS)
 
 
-@router.get("/", response_model=GetPersonasResponse, status_code=status.HTTP_200_OK)
+@router.get("/", response_model=GetPersonasResponse | ResponseBase, status_code=status.HTTP_200_OK)
 @inject
 async def get_personas(
     response: Response,
     pagination: Annotated[GetPersonasRequest, Query()],
-    persona_service: PersonaService = Depends(Provide[PersonaContainer.persona_service]),
+    persona_service: PersonaService = Depends(Provide[DomainContainer.persona.persona_service]),
 ) -> GetPersonasResponse | ResponseBase:
     """Get a paginated list of personas.
 
@@ -117,12 +117,12 @@ async def get_personas(
     return GetPersonasResponse(msg=personas, status=StatusType.SUCCESS)
 
 
-@router.get("/{persona_id}", response_model=GetPersonaResponse, status_code=status.HTTP_200_OK)
+@router.get("/{persona_id}", response_model=GetPersonaResponse | ResponseBase, status_code=status.HTTP_200_OK)
 @inject
 async def get_persona(
     response: Response,
     persona_id: uuid.UUID,
-    persona_service: PersonaService = Depends(Provide[PersonaContainer.persona_service]),
+    persona_service: PersonaService = Depends(Provide[DomainContainer.persona.persona_service]),
 ) -> GetPersonaResponse | ResponseBase:
     """Get a single persona by ID.
 
@@ -148,13 +148,13 @@ async def get_persona(
     return GetPersonaResponse(msg=persona, status=StatusType.SUCCESS)
 
 
-@router.put("/{persona_id}", response_model=PutUpdatePersonaResponse, status_code=status.HTTP_200_OK)
+@router.put("/{persona_id}", response_model=PutUpdatePersonaResponse | ResponseBase, status_code=status.HTTP_200_OK)
 @inject
 async def update_persona(
     response: Response,
     persona_id: uuid.UUID,
     request_data: PutUpdatePersonaRequest,
-    persona_service: PersonaService = Depends(Provide[PersonaContainer.persona_service]),
+    persona_service: PersonaService = Depends(Provide[DomainContainer.persona.persona_service]),
 ) -> PutUpdatePersonaResponse | ResponseBase:
     """Update a persona by ID.
 
@@ -184,12 +184,12 @@ async def update_persona(
     return PutUpdatePersonaResponse(msg=updated_persona, status=StatusType.SUCCESS)
 
 
-@router.delete("/{persona_id}", response_model=DeletePersonaResponse, status_code=status.HTTP_200_OK)
+@router.delete("/{persona_id}", response_model=DeletePersonaResponse | ResponseBase, status_code=status.HTTP_200_OK)
 @inject
 async def delete_persona(
     response: Response,
     persona_id: uuid.UUID,
-    persona_service: PersonaService = Depends(Provide[PersonaContainer.persona_service]),
+    persona_service: PersonaService = Depends(Provide[DomainContainer.persona.persona_service]),
 ) -> DeletePersonaResponse | ResponseBase:
     """Delete a persona by ID.
 

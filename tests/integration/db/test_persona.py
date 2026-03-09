@@ -7,9 +7,8 @@ Each test runs in an isolated transaction that is rolled back after completion.
 import uuid
 from collections.abc import Callable
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from src.domains.persona.db.postgres.repository import PersonaRepository
+from src.infrastructure.db.postgres.client import DatabaseClient
 from src.schemas.interview import (
     InterviewEntitySchema,
     InterviewRelEntitySchema,
@@ -29,13 +28,13 @@ class TestPersonaRepositoryCreate:
 
     async def test_create_returns_persona_rel_entity_schema(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         interview: InterviewRelEntitySchema,
         create_persona_schema_factory: Callable[..., CreatePersonaSchema],
     ) -> None:
         """Verify that create() returns PersonaRelEntitySchema instance."""
         # Arrange
-        repo = PersonaRepository(session)
+        repo = PersonaRepository(db_client)
         persona_data = create_persona_schema_factory(interview_id=interview.id)
 
         # Act
@@ -46,13 +45,13 @@ class TestPersonaRepositoryCreate:
 
     async def test_create_generates_uuid(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         interview: InterviewRelEntitySchema,
         create_persona_schema_factory: Callable[..., CreatePersonaSchema],
     ) -> None:
         """Verify that create() generates a valid UUID for the new persona."""
         # Arrange
-        repo = PersonaRepository(session)
+        repo = PersonaRepository(db_client)
         persona_data = create_persona_schema_factory(interview_id=interview.id)
 
         # Act
@@ -64,13 +63,13 @@ class TestPersonaRepositoryCreate:
 
     async def test_create_persists_bio_description(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         interview: InterviewRelEntitySchema,
         create_persona_schema_factory: Callable[..., CreatePersonaSchema],
     ) -> None:
         """Verify that create() correctly persists the bio_description field."""
         # Arrange
-        repo = PersonaRepository(session)
+        repo = PersonaRepository(db_client)
         bio = "Senior backend engineer with 10 years of experience"
         persona_data = create_persona_schema_factory(interview_id=interview.id, bio_description=bio)
 
@@ -82,13 +81,13 @@ class TestPersonaRepositoryCreate:
 
     async def test_create_persists_is_verified_true(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         interview: InterviewRelEntitySchema,
         create_persona_schema_factory: Callable[..., CreatePersonaSchema],
     ) -> None:
         """Verify that create() correctly persists is_verified=True."""
         # Arrange
-        repo = PersonaRepository(session)
+        repo = PersonaRepository(db_client)
         persona_data = create_persona_schema_factory(interview_id=interview.id, is_verified=True)
 
         # Act
@@ -99,13 +98,13 @@ class TestPersonaRepositoryCreate:
 
     async def test_create_persists_is_verified_false(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         interview: InterviewRelEntitySchema,
         create_persona_schema_factory: Callable[..., CreatePersonaSchema],
     ) -> None:
         """Verify that create() correctly persists is_verified=False (default)."""
         # Arrange
-        repo = PersonaRepository(session)
+        repo = PersonaRepository(db_client)
         persona_data = create_persona_schema_factory(interview_id=interview.id)
 
         # Act
@@ -116,13 +115,13 @@ class TestPersonaRepositoryCreate:
 
     async def test_create_persists_demographic_state(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         interview: InterviewRelEntitySchema,
         create_persona_schema_factory: Callable[..., CreatePersonaSchema],
     ) -> None:
         """Verify that create() correctly persists demographic_state field."""
         # Arrange
-        repo = PersonaRepository(session)
+        repo = PersonaRepository(db_client)
         persona_data = create_persona_schema_factory(interview_id=interview.id)
 
         # Act
@@ -134,13 +133,13 @@ class TestPersonaRepositoryCreate:
 
     async def test_create_generates_created_at_timestamp(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         interview: InterviewRelEntitySchema,
         create_persona_schema_factory: Callable[..., CreatePersonaSchema],
     ) -> None:
         """Verify that create() automatically generates created_at timestamp."""
         # Arrange
-        repo = PersonaRepository(session)
+        repo = PersonaRepository(db_client)
         persona_data = create_persona_schema_factory(interview_id=interview.id)
 
         # Act
@@ -151,13 +150,13 @@ class TestPersonaRepositoryCreate:
 
     async def test_create_generates_updated_at_timestamp(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         interview: InterviewRelEntitySchema,
         create_persona_schema_factory: Callable[..., CreatePersonaSchema],
     ) -> None:
         """Verify that create() automatically generates updated_at timestamp."""
         # Arrange
-        repo = PersonaRepository(session)
+        repo = PersonaRepository(db_client)
         persona_data = create_persona_schema_factory(interview_id=interview.id)
 
         # Act
@@ -168,13 +167,13 @@ class TestPersonaRepositoryCreate:
 
     async def test_create_two_personas_have_different_ids(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         interview: InterviewRelEntitySchema,
         create_persona_schema_factory: Callable[..., CreatePersonaSchema],
     ) -> None:
         """Verify that multiple create() calls generate unique IDs."""
         # Arrange
-        repo = PersonaRepository(session)
+        repo = PersonaRepository(db_client)
         data_first = create_persona_schema_factory(interview_id=interview.id)
         data_second = create_persona_schema_factory(interview_id=interview.id)
 
@@ -187,13 +186,13 @@ class TestPersonaRepositoryCreate:
 
     async def test_create_loads_interview_relationship(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         interview: InterviewRelEntitySchema,
         create_persona_schema_factory: Callable[..., CreatePersonaSchema],
     ) -> None:
         """Verify that create() eagerly loads the interview relationship."""
         # Arrange
-        repo = PersonaRepository(session)
+        repo = PersonaRepository(db_client)
         persona_data = create_persona_schema_factory(interview_id=interview.id)
 
         # Act
@@ -204,13 +203,13 @@ class TestPersonaRepositoryCreate:
 
     async def test_create_interview_relationship_has_correct_id(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         interview: InterviewRelEntitySchema,
         create_persona_schema_factory: Callable[..., CreatePersonaSchema],
     ) -> None:
         """Verify that the loaded interview relationship has the correct ID."""
         # Arrange
-        repo = PersonaRepository(session)
+        repo = PersonaRepository(db_client)
         persona_data = create_persona_schema_factory(interview_id=interview.id)
 
         # Act
@@ -221,13 +220,13 @@ class TestPersonaRepositoryCreate:
 
     async def test_create_interview_relationship_is_correct_type(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         interview: InterviewRelEntitySchema,
         create_persona_schema_factory: Callable[..., CreatePersonaSchema],
     ) -> None:
         """Verify that the interview relationship is of correct schema type."""
         # Arrange
-        repo = PersonaRepository(session)
+        repo = PersonaRepository(db_client)
         persona_data = create_persona_schema_factory(interview_id=interview.id)
 
         # Act
@@ -238,13 +237,13 @@ class TestPersonaRepositoryCreate:
 
     async def test_create_persona_is_retrievable_from_db(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         interview: InterviewRelEntitySchema,
         create_persona_schema_factory: Callable[..., CreatePersonaSchema],
     ) -> None:
         """Verify that created persona can be retrieved via get_by_id()."""
         # Arrange
-        repo = PersonaRepository(session)
+        repo = PersonaRepository(db_client)
         persona_data = create_persona_schema_factory(interview_id=interview.id)
 
         # Act
@@ -263,12 +262,12 @@ class TestPersonaRepositoryGetById:
 
     async def test_get_by_id_returns_correct_persona(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         persona: PersonaRelEntitySchema,
     ) -> None:
         """Verify that get_by_id() retrieves the correct persona by ID."""
         # Arrange
-        repo = PersonaRepository(session)
+        repo = PersonaRepository(db_client)
         assert persona.id is not None
 
         # Act
@@ -281,11 +280,11 @@ class TestPersonaRepositoryGetById:
 
     async def test_get_by_id_returns_none_for_nonexistent(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
     ) -> None:
         """Verify that get_by_id() returns None for non-existent ID."""
         # Arrange
-        repo = PersonaRepository(session)
+        repo = PersonaRepository(db_client)
 
         # Act
         persona_result = await repo.get_by_id(uuid.uuid4())
@@ -295,12 +294,12 @@ class TestPersonaRepositoryGetById:
 
     async def test_get_by_id_returns_persona_rel_entity_schema(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         persona: PersonaRelEntitySchema,
     ) -> None:
         """Verify that get_by_id() returns PersonaRelEntitySchema instance."""
         # Arrange
-        repo = PersonaRepository(session)
+        repo = PersonaRepository(db_client)
         assert persona.id is not None
 
         # Act
@@ -311,12 +310,12 @@ class TestPersonaRepositoryGetById:
 
     async def test_get_by_id_loads_interview_relationship(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         persona: PersonaRelEntitySchema,
     ) -> None:
         """Verify that get_by_id() eagerly loads the interview relationship."""
         # Arrange
-        repo = PersonaRepository(session)
+        repo = PersonaRepository(db_client)
         assert persona.id is not None
 
         # Act
@@ -328,12 +327,12 @@ class TestPersonaRepositoryGetById:
 
     async def test_get_by_id_interview_relationship_has_correct_id(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         persona: PersonaRelEntitySchema,
     ) -> None:
         """Verify that the loaded interview relationship has the correct ID."""
         # Arrange
-        repo = PersonaRepository(session)
+        repo = PersonaRepository(db_client)
         assert persona.id is not None
 
         # Act
@@ -345,12 +344,12 @@ class TestPersonaRepositoryGetById:
 
     async def test_get_by_id_interview_relationship_is_correct_type(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         persona: PersonaRelEntitySchema,
     ) -> None:
         """Verify that the interview relationship is of correct schema type."""
         # Arrange
-        repo = PersonaRepository(session)
+        repo = PersonaRepository(db_client)
         assert persona.id is not None
 
         # Act
@@ -366,11 +365,11 @@ class TestPersonaRepositoryGetAll:
 
     async def test_get_all_returns_empty_list_when_no_personas(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
     ) -> None:
         """Verify that get_all() returns empty list when no personas exist."""
         # Arrange
-        repo = PersonaRepository(session)
+        repo = PersonaRepository(db_client)
 
         # Act
         persona_result = await repo.get_all()
@@ -380,12 +379,12 @@ class TestPersonaRepositoryGetAll:
 
     async def test_get_all_returns_all_created_personas(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         persona_factory: Callable[..., PersonaRelEntitySchema],
     ) -> None:
         """Verify that get_all() returns all persisted personas."""
         # Arrange
-        repo = PersonaRepository(session)
+        repo = PersonaRepository(db_client)
         await persona_factory()
         await persona_factory()
         await persona_factory()
@@ -398,12 +397,12 @@ class TestPersonaRepositoryGetAll:
 
     async def test_get_all_returns_list_of_persona_rel_entity_schemas(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         persona_factory: Callable[..., PersonaRelEntitySchema],
     ) -> None:
         """Verify that get_all() returns list of PersonaRelEntitySchema instances."""
         # Arrange
-        repo = PersonaRepository(session)
+        repo = PersonaRepository(db_client)
         await persona_factory()
 
         # Act
@@ -414,12 +413,12 @@ class TestPersonaRepositoryGetAll:
 
     async def test_get_all_limit_restricts_result_count(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         persona_factory: Callable[..., PersonaRelEntitySchema],
     ) -> None:
         """Verify that get_all() respects the limit parameter."""
         # Arrange
-        repo = PersonaRepository(session)
+        repo = PersonaRepository(db_client)
         for _ in range(5):
             await persona_factory()
 
@@ -431,12 +430,12 @@ class TestPersonaRepositoryGetAll:
 
     async def test_get_all_offset_skips_records(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         persona_factory: Callable[..., PersonaRelEntitySchema],
     ) -> None:
         """Verify that get_all() respects the offset parameter."""
         # Arrange
-        repo = PersonaRepository(session)
+        repo = PersonaRepository(db_client)
         for _ in range(4):
             await persona_factory()
 
@@ -449,12 +448,12 @@ class TestPersonaRepositoryGetAll:
 
     async def test_get_all_offset_returns_non_overlapping_pages(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         persona_factory: Callable[..., PersonaRelEntitySchema],
     ) -> None:
         """Verify that get_all() pagination returns non-overlapping results."""
         # Arrange
-        repo = PersonaRepository(session)
+        repo = PersonaRepository(db_client)
         for _ in range(4):
             await persona_factory()
 
@@ -469,12 +468,12 @@ class TestPersonaRepositoryGetAll:
 
     async def test_get_all_personas_have_loaded_interview_relationships(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         persona_factory: Callable[..., PersonaRelEntitySchema],
     ) -> None:
         """Verify that get_all() eagerly loads interview relationships for all personas."""
         # Arrange
-        repo = PersonaRepository(session)
+        repo = PersonaRepository(db_client)
         await persona_factory()
         await persona_factory()
 
@@ -491,11 +490,11 @@ class TestPersonaRepositoryGetCount:
 
     async def test_get_count_returns_zero_on_empty_table(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
     ) -> None:
         """Verify that get_count() returns 0 when no personas exist."""
         # Arrange
-        repo = PersonaRepository(session)
+        repo = PersonaRepository(db_client)
 
         # Act
         count = await repo.get_count()
@@ -505,12 +504,12 @@ class TestPersonaRepositoryGetCount:
 
     async def test_get_count_reflects_created_personas(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         persona_factory: Callable[..., PersonaRelEntitySchema],
     ) -> None:
         """Verify that get_count() returns the correct number of personas."""
         # Arrange
-        repo = PersonaRepository(session)
+        repo = PersonaRepository(db_client)
         await persona_factory()
         await persona_factory()
 
@@ -522,12 +521,12 @@ class TestPersonaRepositoryGetCount:
 
     async def test_get_count_decreases_after_delete(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         persona_factory: Callable[..., PersonaRelEntitySchema],
     ) -> None:
         """Verify that get_count() decreases after deleting a persona."""
         # Arrange
-        repo = PersonaRepository(session)
+        repo = PersonaRepository(db_client)
         persona = await persona_factory()
         await persona_factory()
 
@@ -540,12 +539,12 @@ class TestPersonaRepositoryGetCount:
 
     async def test_get_count_increments_with_each_create(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         persona_factory: Callable[..., PersonaRelEntitySchema],
     ) -> None:
         """Verify that get_count() increments correctly with each creation."""
         # Arrange
-        repo = PersonaRepository(session)
+        repo = PersonaRepository(db_client)
 
         # Act & Assert
         for expected in range(1, 4):
@@ -558,11 +557,11 @@ class TestPersonaRepositoryUpdateById:
 
     async def test_update_returns_none_for_nonexistent(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
     ) -> None:
         """Verify that update_by_id() returns None for non-existent ID."""
         # Arrange
-        repo = PersonaRepository(session)
+        repo = PersonaRepository(db_client)
         update_data = UpdatePersonasSchema(bio_description="New bio")
 
         # Act
@@ -573,12 +572,12 @@ class TestPersonaRepositoryUpdateById:
 
     async def test_update_bio_description(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         persona: PersonaRelEntitySchema,
     ) -> None:
         """Verify that update_by_id() correctly updates bio_description field."""
         # Arrange
-        repo = PersonaRepository(session)
+        repo = PersonaRepository(db_client)
         assert persona.id is not None
         new_bio = "Completely updated biography text"
         update_data = UpdatePersonasSchema(bio_description=new_bio)
@@ -592,12 +591,12 @@ class TestPersonaRepositoryUpdateById:
 
     async def test_update_is_verified_to_true(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         persona_factory: Callable[..., PersonaRelEntitySchema],
     ) -> None:
         """Verify that update_by_id() can change is_verified from False to True."""
         # Arrange
-        repo = PersonaRepository(session)
+        repo = PersonaRepository(db_client)
         unverified = await persona_factory(is_verified=False)
         assert unverified.id is not None
         update_data = UpdatePersonasSchema(is_verified=True)
@@ -611,12 +610,12 @@ class TestPersonaRepositoryUpdateById:
 
     async def test_update_is_verified_to_false(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         persona_factory: Callable[..., PersonaRelEntitySchema],
     ) -> None:
         """Verify that update_by_id() can change is_verified from True to False."""
         # Arrange
-        repo = PersonaRepository(session)
+        repo = PersonaRepository(db_client)
         verified = await persona_factory(is_verified=True)
         assert verified.id is not None
         update_data = UpdatePersonasSchema(is_verified=False)
@@ -630,12 +629,12 @@ class TestPersonaRepositoryUpdateById:
 
     async def test_update_does_not_change_unspecified_fields(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         persona: PersonaRelEntitySchema,
     ) -> None:
         """Verify that update_by_id() only modifies specified fields."""
         # Arrange
-        repo = PersonaRepository(session)
+        repo = PersonaRepository(db_client)
         assert persona.id is not None
         original_demographic = persona.demographic_state
         original_interview_id = persona.interview_id
@@ -651,12 +650,12 @@ class TestPersonaRepositoryUpdateById:
 
     async def test_update_persists_to_database(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         persona: PersonaRelEntitySchema,
     ) -> None:
         """Verify that update_by_id() changes are persisted to the database."""
         # Arrange
-        repo = PersonaRepository(session)
+        repo = PersonaRepository(db_client)
         assert persona.id is not None
         update_data = UpdatePersonasSchema(bio_description="Persisted change")
 
@@ -670,12 +669,12 @@ class TestPersonaRepositoryUpdateById:
 
     async def test_update_returns_persona_rel_entity_schema(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         persona: PersonaRelEntitySchema,
     ) -> None:
         """Verify that update_by_id() returns PersonaRelEntitySchema instance."""
         # Arrange
-        repo = PersonaRepository(session)
+        repo = PersonaRepository(db_client)
         assert persona.id is not None
         update_data = UpdatePersonasSchema(bio_description="Type check")
 
@@ -687,12 +686,12 @@ class TestPersonaRepositoryUpdateById:
 
     async def test_update_preserves_interview_relationship(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         persona: PersonaRelEntitySchema,
     ) -> None:
         """Verify that update_by_id() preserves the interview relationship."""
         # Arrange
-        repo = PersonaRepository(session)
+        repo = PersonaRepository(db_client)
         assert persona.id is not None
         update_data = UpdatePersonasSchema(bio_description="Relationship check")
 
@@ -707,12 +706,12 @@ class TestPersonaRepositoryUpdateById:
 
     async def test_update_does_not_change_id(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         persona: PersonaRelEntitySchema,
     ) -> None:
         """Verify that update_by_id() does not modify the persona ID."""
         # Arrange
-        repo = PersonaRepository(session)
+        repo = PersonaRepository(db_client)
         assert persona.id is not None
         original_id = persona.id
         update_data = UpdatePersonasSchema(bio_description="ID must not change")
@@ -730,12 +729,12 @@ class TestPersonaRepositoryDeleteById:
 
     async def test_delete_returns_deleted_id(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         persona: PersonaRelEntitySchema,
     ) -> None:
         """Verify that delete_by_id() returns the ID of the deleted persona."""
         # Arrange
-        repo = PersonaRepository(session)
+        repo = PersonaRepository(db_client)
         assert persona.id is not None
 
         # Act
@@ -746,12 +745,12 @@ class TestPersonaRepositoryDeleteById:
 
     async def test_delete_returns_uuid_type(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         persona: PersonaRelEntitySchema,
     ) -> None:
         """Verify that delete_by_id() returns a UUID type."""
         # Arrange
-        repo = PersonaRepository(session)
+        repo = PersonaRepository(db_client)
         assert persona.id is not None
 
         # Act
@@ -762,11 +761,11 @@ class TestPersonaRepositoryDeleteById:
 
     async def test_delete_returns_none_for_nonexistent(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
     ) -> None:
         """Verify that delete_by_id() returns None for non-existent ID."""
         # Arrange
-        repo = PersonaRepository(session)
+        repo = PersonaRepository(db_client)
 
         # Act
         persona_result = await repo.delete_by_id(uuid.uuid4())
@@ -776,12 +775,12 @@ class TestPersonaRepositoryDeleteById:
 
     async def test_delete_removes_persona_from_database(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         persona: PersonaRelEntitySchema,
     ) -> None:
         """Verify that delete_by_id() removes the persona from the database."""
         # Arrange
-        repo = PersonaRepository(session)
+        repo = PersonaRepository(db_client)
         assert persona.id is not None
 
         # Act
@@ -793,12 +792,12 @@ class TestPersonaRepositoryDeleteById:
 
     async def test_delete_does_not_affect_other_personas(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         persona_factory: Callable[..., PersonaRelEntitySchema],
     ) -> None:
         """Verify that delete_by_id() only deletes the specified persona."""
         # Arrange
-        repo = PersonaRepository(session)
+        repo = PersonaRepository(db_client)
         to_delete = await persona_factory()
         to_keep = await persona_factory()
         assert to_delete.id is not None
@@ -814,12 +813,12 @@ class TestPersonaRepositoryDeleteById:
 
     async def test_delete_decreases_count(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         persona_factory: Callable[..., PersonaRelEntitySchema],
     ) -> None:
         """Verify that delete_by_id() decreases the total persona count."""
         # Arrange
-        repo = PersonaRepository(session)
+        repo = PersonaRepository(db_client)
         persona1 = await persona_factory()
         await persona_factory()
         assert persona1.id is not None
@@ -833,12 +832,12 @@ class TestPersonaRepositoryDeleteById:
 
     async def test_delete_is_idempotent_on_second_call(
         self,
-        session: AsyncSession,
+        db_client: DatabaseClient,
         persona: PersonaRelEntitySchema,
     ) -> None:
         """Verify that delete_by_id() is idempotent (returns None on second call)."""
         # Arrange
-        repo = PersonaRepository(session)
+        repo = PersonaRepository(db_client)
         assert persona.id is not None
 
         # Act

@@ -1,14 +1,14 @@
 """Base repository module for PostgreSQL CRUD operations.
 
 This module provides an abstract base class for implementing repository pattern
-with SQLAlchemy async sessions.
+with DatabaseClient-managed sessions.
 """
 
 import uuid
 from abc import ABC, abstractmethod
 from typing import Generic, Optional, Type, TypeVar
 
-from sqlalchemy.ext.asyncio import AsyncSession
+from src.infrastructure.db.postgres.client import DatabaseClient
 
 ModelType = TypeVar("ModelType")
 CreateSchemaType = TypeVar("CreateSchemaType")
@@ -19,14 +19,15 @@ RelEntityType = TypeVar("RelEntityType")
 class BaseCRUDRepository(ABC, Generic[ModelType, CreateSchemaType, UpdateSchemaType, RelEntityType]):
     """Abstract base repository for CRUD operations on database entities.
 
-    This class provides a generic interface for Create, Read, Update, Delete operations
-    using SQLAlchemy ORM models and Pydantic schemas for data validation.
+    Each public method opens its own session via ``DatabaseClient.session()``,
+    ensuring per-operation transaction boundaries (auto-commit on success,
+    rollback on exception).
 
     Type Parameters:
         ModelType: SQLAlchemy ORM model type.
         CreateSchemaType: Pydantic schema for entity creation.
         UpdateSchemaType: Pydantic schema for entity updates.
-        EntityType: Pydantic schema representing the entity.
+        RelEntityType: Pydantic schema representing the entity with relations.
 
     Attributes:
         model: SQLAlchemy ORM model class associated with this repository.
@@ -34,13 +35,13 @@ class BaseCRUDRepository(ABC, Generic[ModelType, CreateSchemaType, UpdateSchemaT
 
     model: Type[ModelType]
 
-    def __init__(self, session: AsyncSession) -> None:
-        """Initialize repository with database session.
+    def __init__(self, db_client: DatabaseClient) -> None:
+        """Initialize repository with database client.
 
         Args:
-            session: SQLAlchemy async session for database operations.
+            db_client: Database client that provides per-operation sessions.
         """
-        self._session = session
+        self._db_client = db_client
 
     @abstractmethod
     async def create(self, create_data: CreateSchemaType) -> RelEntityType:

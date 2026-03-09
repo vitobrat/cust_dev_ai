@@ -20,23 +20,23 @@ from src.domains.user.app.requests.schema import (  # noqa: WPS235
 )
 from src.domains.user.app.usecases.service import UserService
 from src.domains.user.exceptions import UserError, UserNotFound
-from src.infrastructure.containers.domain import UserContainer
+from src.infrastructure.containers.domain import DomainContainer
 from src.schemas.api_base import ResponseBase, StatusType
 
 _logger = get_logger(__name__)
 
 router = APIRouter(
-    prefix="/user",
-    tags=["user"],
+    prefix="/users",
+    tags=["users"],
 )
 
 
-@router.post("/", response_model=PostCreateUserResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=PostCreateUserResponse | ResponseBase, status_code=status.HTTP_201_CREATED)
 @inject
 async def create_user(
     response: Response,
     request_data: PostCreateUserRequest,
-    user_service: UserService = Depends(Provide[UserContainer.user_service]),
+    user_service: UserService = Depends(Provide[DomainContainer.user.user_service]),
 ) -> PostCreateUserResponse | ResponseBase:
     """Create a new user.
 
@@ -62,11 +62,11 @@ async def create_user(
     return PostCreateUserResponse(msg=new_user, status=StatusType.SUCCESS)
 
 
-@router.get("/count", response_model=GetCountUserResponse, status_code=status.HTTP_200_OK)
+@router.get("/count", response_model=GetCountUserResponse | ResponseBase, status_code=status.HTTP_200_OK)
 @inject
 async def count_users(
     response: Response,
-    user_service: UserService = Depends(Provide[UserContainer.user_service]),
+    user_service: UserService = Depends(Provide[DomainContainer.user.user_service]),
 ) -> GetCountUserResponse | ResponseBase:
     """Get total count of users.
 
@@ -87,12 +87,12 @@ async def count_users(
     return GetCountUserResponse(msg=count, status=StatusType.SUCCESS)
 
 
-@router.get("/", response_model=GetUsersResponse, status_code=status.HTTP_200_OK)
+@router.get("/", response_model=GetUsersResponse | ResponseBase, status_code=status.HTTP_200_OK)
 @inject
 async def get_users(
     response: Response,
     pagination: Annotated[GetUsersRequest, Query()],
-    user_service: UserService = Depends(Provide[UserContainer.user_service]),
+    user_service: UserService = Depends(Provide[DomainContainer.user.user_service]),
 ) -> GetUsersResponse | ResponseBase:
     """Get a paginated list of users.
 
@@ -114,12 +114,12 @@ async def get_users(
     return GetUsersResponse(msg=users, status=StatusType.SUCCESS)
 
 
-@router.get("/{user_id}", response_model=GetUserResponse, status_code=status.HTTP_200_OK)
+@router.get("/{user_id}", response_model=GetUserResponse | ResponseBase, status_code=status.HTTP_200_OK)
 @inject
 async def get_user(
     response: Response,
     user_id: uuid.UUID,
-    user_service: UserService = Depends(Provide[UserContainer.user_service]),
+    user_service: UserService = Depends(Provide[DomainContainer.user.user_service]),
 ) -> GetUserResponse | ResponseBase:
     """Get a single user by ID.
 
@@ -145,13 +145,13 @@ async def get_user(
     return GetUserResponse(msg=user, status=StatusType.SUCCESS)
 
 
-@router.put("/{user_id}", response_model=PutUpdateUserResponse, status_code=status.HTTP_200_OK)
+@router.put("/{user_id}", response_model=PutUpdateUserResponse | ResponseBase, status_code=status.HTTP_200_OK)
 @inject
 async def update_user(
     response: Response,
     user_id: uuid.UUID,
     request_data: PutUpdateUserRequest,
-    user_service: UserService = Depends(Provide[UserContainer.user_service]),
+    user_service: UserService = Depends(Provide[DomainContainer.user.user_service]),
 ) -> PutUpdateUserResponse | ResponseBase:
     """Update a user by ID.
 
@@ -181,12 +181,12 @@ async def update_user(
     return PutUpdateUserResponse(msg=updated_user, status=StatusType.SUCCESS)
 
 
-@router.delete("/{user_id}", response_model=DeleteUserResponse, status_code=status.HTTP_200_OK)
+@router.delete("/{user_id}", response_model=DeleteUserResponse | ResponseBase, status_code=status.HTTP_200_OK)
 @inject
 async def delete_user(
     response: Response,
     user_id: uuid.UUID,
-    user_service: UserService = Depends(Provide[UserContainer.user_service]),
+    user_service: UserService = Depends(Provide[DomainContainer.user.user_service]),
 ) -> DeleteUserResponse | ResponseBase:
     """Delete a user by ID.
 

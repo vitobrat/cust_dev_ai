@@ -20,23 +20,23 @@ from src.domains.interview.app.requests.schema import (  # noqa: WPS235
 )
 from src.domains.interview.app.usecases.service import InterviewService
 from src.domains.interview.exceptions import InterviewError, InterviewNotFound
-from src.infrastructure.containers.domain import InterviewContainer
+from src.infrastructure.containers.domain import DomainContainer
 from src.schemas.api_base import ResponseBase, StatusType
 
 _logger = get_logger(__name__)
 
 router = APIRouter(
-    prefix="/interview",
-    tags=["interview"],
+    prefix="/interviews",
+    tags=["interviews"],
 )
 
 
-@router.post("/", response_model=PostCreateInterviewResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=PostCreateInterviewResponse | ResponseBase, status_code=status.HTTP_201_CREATED)
 @inject
 async def create_interview(
     response: Response,
     request_data: PostCreateInterviewRequest,
-    interview_service: InterviewService = Depends(Provide[InterviewContainer.interview_service]),
+    interview_service: InterviewService = Depends(Provide[DomainContainer.interview.interview_service]),
 ) -> PostCreateInterviewResponse | ResponseBase:
     """Create a new interview.
 
@@ -62,11 +62,11 @@ async def create_interview(
     return PostCreateInterviewResponse(msg=new_interview, status=StatusType.SUCCESS)
 
 
-@router.get("/count", response_model=GetCountInterviewResponse, status_code=status.HTTP_200_OK)
+@router.get("/count", response_model=GetCountInterviewResponse | ResponseBase, status_code=status.HTTP_200_OK)
 @inject
 async def count_interviews(
     response: Response,
-    interview_service: InterviewService = Depends(Provide[InterviewContainer.interview_service]),
+    interview_service: InterviewService = Depends(Provide[DomainContainer.interview.interview_service]),
 ) -> GetCountInterviewResponse | ResponseBase:
     """Get total count of interviews.
 
@@ -87,12 +87,12 @@ async def count_interviews(
     return GetCountInterviewResponse(msg=count, status=StatusType.SUCCESS)
 
 
-@router.get("/", response_model=GetInterviewsResponse, status_code=status.HTTP_200_OK)
+@router.get("/", response_model=GetInterviewsResponse | ResponseBase, status_code=status.HTTP_200_OK)
 @inject
 async def get_interviews(
     response: Response,
     pagination: Annotated[GetInterviewsRequest, Query()],
-    interview_service: InterviewService = Depends(Provide[InterviewContainer.interview_service]),
+    interview_service: InterviewService = Depends(Provide[DomainContainer.interview.interview_service]),
 ) -> GetInterviewsResponse | ResponseBase:
     """Get a paginated list of interviews.
 
@@ -114,12 +114,12 @@ async def get_interviews(
     return GetInterviewsResponse(msg=interviews, status=StatusType.SUCCESS)
 
 
-@router.get("/{interview_id}", response_model=GetInterviewResponse, status_code=status.HTTP_200_OK)
+@router.get("/{interview_id}", response_model=GetInterviewResponse | ResponseBase, status_code=status.HTTP_200_OK)
 @inject
 async def get_interview(
     response: Response,
     interview_id: uuid.UUID,
-    interview_service: InterviewService = Depends(Provide[InterviewContainer.interview_service]),
+    interview_service: InterviewService = Depends(Provide[DomainContainer.interview.interview_service]),
 ) -> GetInterviewResponse | ResponseBase:
     """Get a single interview by ID.
 
@@ -145,13 +145,13 @@ async def get_interview(
     return GetInterviewResponse(msg=interview, status=StatusType.SUCCESS)
 
 
-@router.put("/{interview_id}", response_model=PutUpdateInterviewResponse, status_code=status.HTTP_200_OK)
+@router.put("/{interview_id}", response_model=PutUpdateInterviewResponse | ResponseBase, status_code=status.HTTP_200_OK)
 @inject
 async def update_interview(
     response: Response,
     interview_id: uuid.UUID,
     request_data: PutUpdateInterviewRequest,
-    interview_service: InterviewService = Depends(Provide[InterviewContainer.interview_service]),
+    interview_service: InterviewService = Depends(Provide[DomainContainer.interview.interview_service]),
 ) -> PutUpdateInterviewResponse | ResponseBase:
     """Update an interview by ID.
 
@@ -181,12 +181,12 @@ async def update_interview(
     return PutUpdateInterviewResponse(msg=updated_interview, status=StatusType.SUCCESS)
 
 
-@router.delete("/{interview_id}", response_model=DeleteInterviewResponse, status_code=status.HTTP_200_OK)
+@router.delete("/{interview_id}", response_model=DeleteInterviewResponse | ResponseBase, status_code=status.HTTP_200_OK)
 @inject
 async def delete_interview(
     response: Response,
     interview_id: uuid.UUID,
-    interview_service: InterviewService = Depends(Provide[InterviewContainer.interview_service]),
+    interview_service: InterviewService = Depends(Provide[DomainContainer.interview.interview_service]),
 ) -> DeleteInterviewResponse | ResponseBase:
     """Delete an interview by ID.
 
