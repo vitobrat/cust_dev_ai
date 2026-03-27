@@ -10,6 +10,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
 
     ports:
       - 8000:8000
@@ -61,6 +63,38 @@ services:
         reservations:
           cpus: '0.5'
           memory: 256M
+
+  redis:
+    container_name: redis
+    image: redis:7-alpine
+    restart: unless-stopped
+
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
+
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a $${REDIS_PASSWORD} ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+    ports:
+      - 127.0.0.1:6379:6379
+
+    networks:
+      - backend_network
+
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 128M
+        reservations:
+          cpus: '0.25'
+          memory: 64M
 
 networks:
   backend_network:
