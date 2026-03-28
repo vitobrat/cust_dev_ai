@@ -94,6 +94,24 @@ class PostgresDBConfigs(_BaseValidatedConfig):
         return f"{driver}://{auth}@{location}/{self.db}?{query_params}"
 
 
+class RabbitMQConfigs(_BaseValidatedConfig):
+    """RabbitMQ broker connection settings including credentials.
+
+    Attributes:
+        host: RabbitMQ server hostname.
+        port: AMQP port.
+        vhost: Virtual host path.
+        user: Broker username (loaded from environment).
+        password: Broker password (loaded from environment).
+    """
+
+    host: str
+    port: int
+    vhost: str
+    user: str = Field(alias="RABBITMQ_USER")
+    password: str = Field(alias="RABBITMQ_PASSWORD")
+
+
 class BaseDomainConfig(_BaseValidatedConfig):
     """Base configuration for domain-specific settings.
 
@@ -203,6 +221,7 @@ class AppConfigs(_BaseValidatedConfig):
     workers_number: int
     logger: LoggerConfigs = Field(default_factory=LoggerConfigs)
     persona: PersonaConfig
+    rabbitmq: RabbitMQConfigs
     postgres: PostgresDBConfigs
     langfuse: LangfuseConfigs
     llm: LLMConfigs

@@ -19,11 +19,30 @@ from src.domains.sub_interview.app.requests.router import (
 from src.domains.task.app.requests.router import router as task_router
 from src.domains.user.app.requests.router import router as user_router
 from src.infrastructure.containers.domain import DomainContainer
+from src.infrastructure.rabbitmq.client import RabbitMQClient
 
 settings = AppConfigs.init()
 
 setup_logger(settings.logger.logging_config_file)
 logger = get_logger(__name__)
+
+
+def init_containers() -> DomainContainer:
+    """Initialize and wire DI containers for the worker."""
+    container = DomainContainer()
+    container.config.from_dict(settings.model_dump())
+    container.wire(packages=["src.domains"])
+    return container
+
+
+async def _shutdown(rabbitmq_client: RabbitMQClient) -> None:
+    """Close all external service connections gracefully.
+
+    Args:
+        rabbitmq_client: RabbitMQ client to close.
+    """
+    await rabbitmq_client.close()
+    logger.info("Service is shutting down correctly")
 
 
 @asynccontextmanager
@@ -41,15 +60,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     logger.info("Cust-dev llm service is starting up...")
 
-    container = DomainContainer()
-    container.config.from_dict(settings.model_dump())
-    container.wire(packages=["src.domains"])
+    container = init_containers()
     app.state.container = container
+
+    rabbitmq_client = container.infrastructure.rabbitmq_client()
 
     try:
         yield
     finally:
-        logger.info("Service is shutting down correctly")
+        await _shutdown(rabbitmq_client)
 
 
 limiter = Limiter(key_func=get_remote_address)

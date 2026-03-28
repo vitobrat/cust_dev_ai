@@ -10,9 +10,10 @@ from langchain_openai import ChatOpenAI
 from langfuse import get_client
 from langfuse.langchain import CallbackHandler
 
-from src.configs.config import AppConfigs
+from src.configs.config import AppConfigs, RabbitMQConfigs
 from src.infrastructure.db.postgres.client import DatabaseClient
 from src.infrastructure.llm.llm_adapter import LLMAdapter
+from src.infrastructure.rabbitmq.client import RabbitMQClient
 
 
 class InfrastructureContainer(containers.DeclarativeContainer):
@@ -39,6 +40,18 @@ class InfrastructureContainer(containers.DeclarativeContainer):
         pool_size=config.postgres.pool_size,
         max_overflow=config.postgres.max_overflow,
         echo=config.postgres.echo,
+    )
+
+    rabbitmq_client = providers.Singleton(
+        RabbitMQClient,
+        configs=providers.Singleton(
+            RabbitMQConfigs,
+            host=config.rabbitmq.host,
+            port=config.rabbitmq.port,
+            vhost=config.rabbitmq.vhost,
+            user=config.rabbitmq.user,
+            password=config.rabbitmq.password,
+        ),
     )
 
     llm: ChatOpenAI = providers.Singleton(
