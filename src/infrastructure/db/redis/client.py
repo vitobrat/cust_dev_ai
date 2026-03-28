@@ -1,5 +1,7 @@
 """Redis client with async connection pooling."""
 
+from __future__ import annotations
+
 from redis import asyncio as redis
 
 
@@ -32,6 +34,11 @@ class RedisClient:
             max_connections=max_connections,
         )
 
+    @property
+    def client(self) -> redis.Redis[str]:
+        """Return the underlying async Redis instance."""
+        return self._client
+
     async def ping(self) -> bool:
         """Check if Redis server is reachable.
 
@@ -48,4 +55,4 @@ class RedisClient:
 
         Should be called during application shutdown to ensure graceful cleanup.
         """
-        await self._client.close()
+        await self._client.aclose()  # type: ignore[attr-defined]

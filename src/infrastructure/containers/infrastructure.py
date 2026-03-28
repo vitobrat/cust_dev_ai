@@ -13,6 +13,7 @@ from langfuse.langchain import CallbackHandler
 from src.configs.config import AppConfigs
 from src.infrastructure.db.postgres.client import DatabaseClient
 from src.infrastructure.db.redis.client import RedisClient
+from src.infrastructure.db.redis.repository import BaseRedisRepository
 from src.infrastructure.llm.llm_adapter import LLMAdapter
 
 
@@ -47,6 +48,11 @@ class InfrastructureContainer(containers.DeclarativeContainer):
         redis_url=config.redis.redis_url,
         max_connections=config.redis.max_connections,
         decode_responses=config.redis.decode_responses,
+    )
+
+    redis_repository: BaseRedisRepository = providers.Factory(
+        BaseRedisRepository,
+        redis_client=redis_client,
     )
 
     llm: ChatOpenAI = providers.Singleton(
