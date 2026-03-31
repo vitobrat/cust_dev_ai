@@ -30,11 +30,24 @@ class CreateTaskSchema(BaseModel):
     """
 
     type: TaskType
-    status: TaskStatus
-    progress: float = Field(ge=0, le=1.0)
+    status: TaskStatus = TaskStatus.PENDING
+    progress: float = Field(default=0, ge=0, le=1.0)
     error_log: Optional[str] = None
     input_params: dict[str, Any]
     user_id: uuid.UUID
+
+
+class TaskSchema(CreateTaskSchema):
+    """Full task representation stored in the queue.
+
+    Attributes:
+        task_id: Unique identifier assigned at creation time.
+        status: Current execution status. Defaults to ``pending``.
+        progress: Completion ratio from 0.0 to 1.0. Defaults to 0.
+        error_log: Error message if the task has failed.
+    """
+
+    task_id: uuid.UUID
 
 
 class UpdateTaskSchema(BaseModel):

@@ -1,43 +1,54 @@
-"""Unit tests for BaseRedisRepository key-value operations."""
+"""Unit tests for BaseRedisRepository list operations."""
 
 from typing import Any
 
-import pytest
 
-from src.infrastructure.exceptions import RedisRepositoryError
+async def test_lpush_returns_list_length(mock_redis_repository: Any) -> None:
+    """_lpush() returns the list length after the push."""
+    mock_redis_repository._redis.lpush.return_value = 3
 
+    lpush_result = await mock_redis_repository._lpush("queue:tasks", "payload")
 
-async def test_get_returns_value(mock_redis_repository: Any) -> None:
-    """_get() returns the stored string value."""
-    mock_redis_repository._redis.get.return_value = "cached_value"
-
-    get_result = await mock_redis_repository._get("user:123")
-
-    assert get_result == "cached_value"
-    mock_redis_repository._redis.get.assert_awaited_once_with("user:123")
+    assert lpush_result == 3
+    mock_redis_repository._redis.lpush.assert_awaited_once_with("queue:tasks", "payload")
 
 
-async def test_get_returns_none_for_missing_key(mock_redis_repository: Any) -> None:
-    """_get() returns None when the key does not exist."""
-    mock_redis_repository._redis.get.return_value = None
+async def test_brpop_returns_key_value_tuple(mock_redis_repository: Any) -> None:
+    """_brpop() returns (key, value) tuple when an element is available."""
+    mock_redis_repository._redis.brpop.return_value = ("queue:tasks", "payload")
 
-    get_result = await mock_redis_repository._get("nonexistent")
+    brpop_result = await mock_redis_repository._brpop("queue:tasks", timeout=1)
 
-    assert get_result is None
-
-
-async def test_set_without_ttl(mock_redis_repository: Any) -> None:
-    """_set() stores a value without expiration when ttl is None."""
-    await mock_redis_repository._set("cache:item", "payload")
-
-    mock_redis_repository._redis.set.assert_awaited_once_with("cache:item", "payload", ex=None)
+    assert brpop_result == ("queue:tasks", "payload")
+    mock_redis_repository._redis.brpop.assert_awaited_once_with("queue:tasks", timeout=1)
 
 
-async def test_set_with_ttl(mock_redis_repository: Any) -> None:
-    """_set() stores a value with expiration in seconds."""
-    await mock_redis_repository._set("cache:item", "payload", ttl=60)
+async def test_brpop_returns_none_on_timeout(mock_redis_repository: Any) -> None:
+    """_brpop() returns None when the timeout elapses with no element."""
+    mock_redis_repository._redis.brpop.return_value = None
 
-    mock_redis_repository._redis.set.assert_awaited_once_with("cache:item", "payload", ex=60)
+    brpop_result = await mock_redis_repository._brpop("queue:tasks", timeout=1)
+
+    assert brpop_result is None
+
+
+async def test_brpop_defaults_to_zero_timeout(mock_redis_repository: Any) -> None:
+    """_brpop() passes timeout=0 by default (block indefinitely)."""
+    mock_redis_repository._redis.brpop.return_value = None
+
+    await mock_redis_repository._brpop("queue:tasks")
+
+    mock_redis_repository._redis.brpop.assert_awaited_once_with("queue:tasks", timeout=0)
+
+
+async def test_llen_returns_list_length(mock_redis_repository: Any) -> None:
+    """_llen() returns the number of elements in the list."""
+    mock_redis_repository._redis.llen.return_value = 5
+
+    llen_result = await mock_redis_repository._llen("queue:tasks")
+
+    assert llen_result == 5
+    mock_redis_repository._redis.llen.assert_awaited_once_with("queue:tasks")
 
 
 async def test_delete_calls_redis_delete(mock_redis_repository: Any) -> None:
@@ -60,48 +71,3 @@ async def test_exists_returns_false_when_key_missing(mock_redis_repository: Any)
     mock_redis_repository._redis.exists.return_value = 0
 
     assert await mock_redis_repository.exists("cache:item") is False
-
-
-async def test_get_json_returns_parsed_dict(mock_redis_repository: Any) -> None:
-    """get_json() deserializes stored JSON string into a dict."""
-    mock_redis_repository._redis.get.return_value = '{"name": "Alice", "age": 30}'
-
-    get_json_result = await mock_redis_repository.get_json("persona:123")
-
-    assert get_json_result == {"name": "Alice", "age": 30}
-
-
-async def test_get_json_returns_none_for_missing_key(mock_redis_repository: Any) -> None:
-    """get_json() returns None when the key does not exist."""
-    mock_redis_repository._redis.get.return_value = None
-
-    assert await mock_redis_repository.get_json("nonexistent") is None
-
-
-async def test_get_json_raises_on_invalid_json(mock_redis_repository: Any) -> None:
-    """get_json() raises RedisRepositoryError for malformed JSON."""
-    mock_redis_repository._redis.get.return_value = "not-valid-json{{"
-
-    with pytest.raises(RedisRepositoryError, match="Invalid JSON"):
-        await mock_redis_repository.get_json("broken:key")
-
-
-async def test_set_json_serializes_and_stores(mock_redis_repository: Any) -> None:
-    """set_json() serializes dict to JSON and delegates to _set."""
-    payload = {"name": "Alice", "age": 30}
-
-    await mock_redis_repository.set_json("persona:123", payload, ttl=120)
-
-    mock_redis_repository._redis.set.assert_awaited_once()
-    call_args = mock_redis_repository._redis.set.call_args
-    assert call_args.args[0] == "persona:123"
-    assert '"name"' in call_args.args[1]
-    assert call_args.kwargs["ex"] == 120
-
-
-async def test_set_json_raises_on_unserializable_payload(mock_redis_repository: Any) -> None:
-    """set_json() raises RedisRepositoryError if payload is not JSON-serializable."""
-    unserializable = {"callback": lambda: None}
-
-    with pytest.raises(RedisRepositoryError, match="Cannot serialize"):
-        await mock_redis_repository.set_json("bad:key", unserializable)

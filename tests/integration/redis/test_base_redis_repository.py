@@ -1,97 +1,188 @@
 """Integration tests for BaseRedisRepository.
 
-Tests cover all key-value operations with real Redis via testcontainers.
-Each test runs against a clean database — flushdb is called after every test.
+Tests cover all list operations and key management with real Redis
+via testcontainers. Each test runs against a clean database —
+flushdb is called after every test.
 """
 
-import pytest
-
 from src.infrastructure.db.redis.repository import BaseRedisRepository
-from src.infrastructure.exceptions import RedisRepositoryError
 
 
-class TestBaseRedisRepositorySet:
-    """Tests for BaseRedisRepository._set()."""
+class TestBaseRedisRepositoryLpush:
+    """Tests for BaseRedisRepository._lpush()."""
 
-    async def test_set_persists_value(
+    async def test_lpush_returns_list_length(
         self,
         redis_repository: BaseRedisRepository,
     ) -> None:
-        """Verify that _set() stores a value retrievable by _get()."""
+        """Verify that _lpush() returns the list length after insertion."""
         # Arrange
-        redis_key = "test:set:basic"
-        expected_value = "hello_redis"
+        redis_key = "test:lpush:length"
 
         # Act
-        await redis_repository._set(redis_key, expected_value)
-        stored_value = await redis_repository._get(redis_key)
+        length = await redis_repository._lpush(redis_key, "first")
 
         # Assert
-        assert stored_value == expected_value
+        assert length == 1
 
-    async def test_set_with_ttl_persists_value(
+    async def test_lpush_increments_length_on_multiple_inserts(
         self,
         redis_repository: BaseRedisRepository,
     ) -> None:
-        """Verify that _set() with TTL stores a value and the key exists."""
+        """Verify that successive _lpush() calls increment the list length."""
         # Arrange
-        redis_key = "test:set:ttl"
-        expected_value = "expiring_value"
+        redis_key = "test:lpush:multi"
 
         # Act
-        await redis_repository._set(redis_key, expected_value, ttl=300)
+        first_length = await redis_repository._lpush(redis_key, "a")
+        second_length = await redis_repository._lpush(redis_key, "b")
+        third_length = await redis_repository._lpush(redis_key, "c")
 
         # Assert
-        stored_value = await redis_repository._get(redis_key)
-        assert stored_value == expected_value
+        assert first_length == 1
+        assert second_length == 2
+        assert third_length == 3
+
+    async def test_lpush_creates_key_if_absent(
+        self,
+        redis_repository: BaseRedisRepository,
+    ) -> None:
+        """Verify that _lpush() creates the key when it does not exist."""
+        # Arrange
+        redis_key = "test:lpush:create"
+
+        # Act
+        await redis_repository._lpush(redis_key, "value")
+
+        # Assert
         assert await redis_repository.exists(redis_key) is True
 
-    async def test_set_overwrites_existing_value(
+
+class TestBaseRedisRepositoryBrpop:
+    """Tests for BaseRedisRepository._brpop()."""
+
+    async def test_brpop_returns_element_from_tail(
         self,
         redis_repository: BaseRedisRepository,
     ) -> None:
-        """Verify that _set() overwrites a previously stored value."""
+        """Verify that _brpop() returns the tail element (FIFO with LPUSH)."""
         # Arrange
-        redis_key = "test:set:overwrite"
-        await redis_repository._set(redis_key, "original")
+        redis_key = "test:brpop:tail"
+        await redis_repository._lpush(redis_key, "first")
+        await redis_repository._lpush(redis_key, "second")
 
         # Act
-        await redis_repository._set(redis_key, "updated")
-        stored_value = await redis_repository._get(redis_key)
+        popped = await redis_repository._brpop(redis_key, timeout=1)
 
         # Assert
-        assert stored_value == "updated"
+        assert popped is not None
+        assert popped == (redis_key, "first")
 
-
-class TestBaseRedisRepositoryGet:
-    """Tests for BaseRedisRepository._get()."""
-
-    async def test_get_returns_none_for_missing_key(
+    async def test_brpop_removes_element_from_list(
         self,
         redis_repository: BaseRedisRepository,
     ) -> None:
-        """Verify that _get() returns None when the key does not exist."""
-        # Act
-        stored_value = await redis_repository._get("test:get:nonexistent")
-
-        # Assert
-        assert stored_value is None
-
-    async def test_get_returns_stored_value(
-        self,
-        redis_repository: BaseRedisRepository,
-    ) -> None:
-        """Verify that _get() returns the exact value that was stored."""
+        """Verify that _brpop() removes the popped element."""
         # Arrange
-        redis_key = "test:get:existing"
-        expected_value = "stored_data_123"
-        await redis_repository._set(redis_key, expected_value)
+        redis_key = "test:brpop:remove"
+        await redis_repository._lpush(redis_key, "only_element")
 
         # Act
-        stored_value = await redis_repository._get(redis_key)
+        await redis_repository._brpop(redis_key, timeout=1)
 
         # Assert
-        assert stored_value == expected_value
+        assert await redis_repository._llen(redis_key) == 0
+
+    async def test_brpop_returns_none_on_timeout(
+        self,
+        redis_repository: BaseRedisRepository,
+    ) -> None:
+        """Verify that _brpop() returns None when the list is empty and timeout expires."""
+        # Act
+        popped = await redis_repository._brpop("test:brpop:empty", timeout=1)
+
+        # Assert
+        assert popped is None
+
+    async def test_brpop_fifo_order_with_lpush(
+        self,
+        redis_repository: BaseRedisRepository,
+    ) -> None:
+        """Verify FIFO order: LPUSH + BRPOP pops the earliest pushed element."""
+        # Arrange
+        redis_key = "test:brpop:fifo"
+        await redis_repository._lpush(redis_key, "first")
+        await redis_repository._lpush(redis_key, "second")
+        await redis_repository._lpush(redis_key, "third")
+
+        # Act & Assert — pop order should be first, second, third
+        first = await redis_repository._brpop(redis_key, timeout=1)
+        second = await redis_repository._brpop(redis_key, timeout=1)
+        third = await redis_repository._brpop(redis_key, timeout=1)
+
+        assert first == (redis_key, "first")
+        assert second == (redis_key, "second")
+        assert third == (redis_key, "third")
+
+    async def test_brpop_deletes_key_after_last_element(
+        self,
+        redis_repository: BaseRedisRepository,
+    ) -> None:
+        """Verify that the key is removed after the last element is popped."""
+        # Arrange
+        redis_key = "test:brpop:autoremove"
+        await redis_repository._lpush(redis_key, "sole")
+
+        # Act
+        await redis_repository._brpop(redis_key, timeout=1)
+
+        # Assert
+        assert await redis_repository.exists(redis_key) is False
+
+
+class TestBaseRedisRepositoryLlen:
+    """Tests for BaseRedisRepository._llen()."""
+
+    async def test_llen_returns_zero_for_missing_key(
+        self,
+        redis_repository: BaseRedisRepository,
+    ) -> None:
+        """Verify that _llen() returns 0 when the key does not exist."""
+        # Act & Assert
+        assert await redis_repository._llen("test:llen:missing") == 0
+
+    async def test_llen_returns_correct_count(
+        self,
+        redis_repository: BaseRedisRepository,
+    ) -> None:
+        """Verify that _llen() returns the actual number of elements."""
+        # Arrange
+        redis_key = "test:llen:count"
+        await redis_repository._lpush(redis_key, "a")
+        await redis_repository._lpush(redis_key, "b")
+        await redis_repository._lpush(redis_key, "c")
+
+        # Act
+        length = await redis_repository._llen(redis_key)
+
+        # Assert
+        assert length == 3
+
+    async def test_llen_reflects_pop(
+        self,
+        redis_repository: BaseRedisRepository,
+    ) -> None:
+        """Verify that _llen() decreases after _brpop()."""
+        # Arrange
+        redis_key = "test:llen:pop"
+        await redis_repository._lpush(redis_key, "a")
+        await redis_repository._lpush(redis_key, "b")
+
+        # Act
+        await redis_repository._brpop(redis_key, timeout=1)
+
+        # Assert
+        assert await redis_repository._llen(redis_key) == 1
 
 
 class TestBaseRedisRepositoryDelete:
@@ -104,14 +195,13 @@ class TestBaseRedisRepositoryDelete:
         """Verify that delete() removes a key from Redis."""
         # Arrange
         redis_key = "test:delete:existing"
-        await redis_repository._set(redis_key, "to_be_deleted")
+        await redis_repository._lpush(redis_key, "to_be_deleted")
 
         # Act
         await redis_repository.delete(redis_key)
 
         # Assert
         assert await redis_repository.exists(redis_key) is False
-        assert await redis_repository._get(redis_key) is None
 
     async def test_delete_does_not_raise_for_missing_key(
         self,
@@ -120,6 +210,24 @@ class TestBaseRedisRepositoryDelete:
         """Verify that delete() is a no-op for a non-existent key."""
         # Act & Assert — should not raise
         await redis_repository.delete("test:delete:nonexistent")
+
+    async def test_delete_removes_all_elements(
+        self,
+        redis_repository: BaseRedisRepository,
+    ) -> None:
+        """Verify that delete() removes the entire list, not just one element."""
+        # Arrange
+        redis_key = "test:delete:full"
+        await redis_repository._lpush(redis_key, "a")
+        await redis_repository._lpush(redis_key, "b")
+        await redis_repository._lpush(redis_key, "c")
+
+        # Act
+        await redis_repository.delete(redis_key)
+
+        # Assert
+        assert await redis_repository._llen(redis_key) == 0
+        assert await redis_repository.exists(redis_key) is False
 
 
 class TestBaseRedisRepositoryExists:
@@ -140,81 +248,20 @@ class TestBaseRedisRepositoryExists:
         """Verify that exists() returns True when the key is present."""
         # Arrange
         redis_key = "test:exists:present"
-        await redis_repository._set(redis_key, "some_value")
+        await redis_repository._lpush(redis_key, "some_value")
 
         # Act & Assert
         assert await redis_repository.exists(redis_key) is True
 
-
-class TestBaseRedisRepositorySetJson:
-    """Tests for BaseRedisRepository.set_json() and get_json()."""
-
-    async def test_set_json_and_get_json_round_trip(
+    async def test_exists_returns_false_after_delete(
         self,
         redis_repository: BaseRedisRepository,
     ) -> None:
-        """Verify that set_json() stores a dict retrievable by get_json()."""
+        """Verify that exists() returns False after the key is deleted."""
         # Arrange
-        redis_key = "test:json:roundtrip"
-        payload = {
-            "name": "Alice",
-            "age": 30,
-            "tags": ["developer", "python"],
-            "active": True,
-        }
-
-        # Act
-        await redis_repository.set_json(redis_key, payload)
-        restored = await redis_repository.get_json(redis_key)
-
-        # Assert
-        assert restored == payload
-
-    async def test_set_json_with_ttl(
-        self,
-        redis_repository: BaseRedisRepository,
-    ) -> None:
-        """Verify that set_json() with TTL stores a retrievable value."""
-        # Arrange
-        redis_key = "test:json:ttl"
-        payload = {"status": "cached"}
-
-        # Act
-        await redis_repository.set_json(redis_key, payload, ttl=300)
-
-        # Assert
-        assert await redis_repository.exists(redis_key) is True
-        assert await redis_repository.get_json(redis_key) == payload
-
-    async def test_get_json_returns_none_for_missing_key(
-        self,
-        redis_repository: BaseRedisRepository,
-    ) -> None:
-        """Verify that get_json() returns None for a non-existent key."""
-        # Act & Assert
-        assert await redis_repository.get_json("test:json:missing") is None
-
-    async def test_get_json_raises_on_invalid_json(
-        self,
-        redis_repository: BaseRedisRepository,
-    ) -> None:
-        """Verify that get_json() raises RedisRepositoryError for malformed JSON."""
-        # Arrange — write raw invalid JSON bypassing set_json
-        redis_key = "test:json:invalid"
-        await redis_repository._set(redis_key, "not-valid-json{{")
+        redis_key = "test:exists:deleted"
+        await redis_repository._lpush(redis_key, "temporary")
+        await redis_repository.delete(redis_key)
 
         # Act & Assert
-        with pytest.raises(RedisRepositoryError, match="Invalid JSON"):
-            await redis_repository.get_json(redis_key)
-
-    async def test_set_json_raises_on_unserializable_payload(
-        self,
-        redis_repository: BaseRedisRepository,
-    ) -> None:
-        """Verify that set_json() raises RedisRepositoryError for non-serializable data."""
-        # Arrange
-        unserializable = {"callback": lambda: None}
-
-        # Act & Assert
-        with pytest.raises(RedisRepositoryError, match="Cannot serialize"):
-            await redis_repository.set_json("test:json:bad", unserializable)
+        assert await redis_repository.exists(redis_key) is False
