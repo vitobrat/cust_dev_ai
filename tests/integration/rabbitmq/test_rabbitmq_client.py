@@ -1,12 +1,14 @@
 """Integration tests for RabbitMQClient.
 
 Tests cover connect/close lifecycle, publish/consume round-trip,
-and publish_reply with a real RabbitMQ broker via testcontainers.
+publish_reply, and RPC call with a real RabbitMQ broker via testcontainers.
 """
 
 import asyncio
 import uuid
 from typing import Any
+
+import pytest
 
 from src.configs.config import RabbitMQConfigs
 from src.infrastructure.rabbitmq.client import RabbitMQClient
@@ -245,3 +247,125 @@ class TestRabbitMQClientPublishReplyIntegration:
 
         actual_corr_id = await asyncio.wait_for(received, timeout=_CONSUME_TIMEOUT_SEC)
         assert actual_corr_id == expected_corr_id
+
+
+class _EchoHandler:
+    """Simulate a remote RPC server: consume a request and reply with transformed payload."""
+
+    def __init__(self, client: RabbitMQClient) -> None:
+        self._client = client
+
+    async def __call__(
+        self,
+        reply_to: str | None,
+        correlation_id: str | None,
+        payload: dict[str, Any],
+    ) -> None:
+        if reply_to is None or correlation_id is None:
+            return
+        response = {"echo": payload, "status": "ok"}
+        await self._client.publish_reply(reply_to, correlation_id, response)
+
+
+class TestRabbitMQClientRpcCall:
+    """Tests for rpc_call() RPC round-trip."""
+
+    async def test_rpc_call_returns_reply_payload(
+        self,
+        rabbitmq_client: RabbitMQClient,
+    ) -> None:
+        """Verify that rpc_call() sends a request and receives the correct reply."""
+        queue_name = _unique_queue()
+        await rabbitmq_client.consume(queue_name, _EchoHandler(rabbitmq_client))
+
+        reply_payload = await rabbitmq_client.rpc_call(queue_name, {"question": "ping"})
+
+        assert reply_payload == {"echo": {"question": "ping"}, "status": "ok"}
+
+    async def test_rpc_call_sets_reply_to_on_message(
+        self,
+        rabbitmq_client: RabbitMQClient,
+    ) -> None:
+        """Verify that rpc_call() sets reply_to property on the outgoing message."""
+        queue_name = _unique_queue()
+        captured_reply_to: asyncio.Future[str | None] = asyncio.get_running_loop().create_future()
+
+        await rabbitmq_client.consume(queue_name, _ReplyToCapture(captured_reply_to))
+        # Fire rpc_call but don't await reply (no echo handler), use short timeout.
+        with pytest.raises(asyncio.TimeoutError):
+            await rabbitmq_client.rpc_call(queue_name, {"check": "reply_to"}, timeout=1.0)
+
+        reply_to = await asyncio.wait_for(captured_reply_to, timeout=_CONSUME_TIMEOUT_SEC)
+        assert reply_to is not None
+        assert len(reply_to) > 0
+
+    async def test_rpc_call_sets_correlation_id_on_message(
+        self,
+        rabbitmq_client: RabbitMQClient,
+    ) -> None:
+        """Verify that rpc_call() sets correlation_id property on the outgoing message."""
+        queue_name = _unique_queue()
+        captured_corr_id: asyncio.Future[str | None] = asyncio.get_running_loop().create_future()
+
+        await rabbitmq_client.consume(queue_name, _CorrelationIdCapture(captured_corr_id))
+        with pytest.raises(asyncio.TimeoutError):
+            await rabbitmq_client.rpc_call(queue_name, {"check": "corr_id"}, timeout=1.0)
+
+        corr_id = await asyncio.wait_for(captured_corr_id, timeout=_CONSUME_TIMEOUT_SEC)
+        assert corr_id is not None
+        assert len(corr_id) > 0
+
+    async def test_rpc_call_timeout_raises(
+        self,
+        rabbitmq_client: RabbitMQClient,
+    ) -> None:
+        """Verify that rpc_call() raises TimeoutError when no reply arrives."""
+        queue_name = _unique_queue()
+
+        with pytest.raises(asyncio.TimeoutError):
+            await rabbitmq_client.rpc_call(queue_name, {"waiting": "forever"}, timeout=0.5)
+
+    async def test_rpc_call_timeout_cleans_up_pending(
+        self,
+        rabbitmq_client: RabbitMQClient,
+    ) -> None:
+        """Verify that a timed-out rpc_call removes its future from _pending_rpcs."""
+        queue_name = _unique_queue()
+
+        with pytest.raises(asyncio.TimeoutError):
+            await rabbitmq_client.rpc_call(queue_name, {"stale": True}, timeout=0.5)
+
+        assert len(rabbitmq_client._pending_rpcs) == 0
+
+    async def test_rpc_call_multiple_parallel(
+        self,
+        rabbitmq_client: RabbitMQClient,
+    ) -> None:
+        """Verify that multiple concurrent rpc_call() invocations resolve independently."""
+        queue_name = _unique_queue()
+        await rabbitmq_client.consume(queue_name, _EchoHandler(rabbitmq_client))
+
+        replies = await asyncio.gather(
+            rabbitmq_client.rpc_call(queue_name, {"idx": 1}),
+            rabbitmq_client.rpc_call(queue_name, {"idx": 2}),
+            rabbitmq_client.rpc_call(queue_name, {"idx": 3}),
+        )
+
+        echoed_indices = sorted(reply["echo"]["idx"] for reply in replies)
+        assert echoed_indices == [1, 2, 3]
+
+    async def test_rpc_call_reuses_reply_queue(
+        self,
+        rabbitmq_client: RabbitMQClient,
+    ) -> None:
+        """Verify that consecutive rpc_call() invocations reuse the same reply queue."""
+        queue_name = _unique_queue()
+        await rabbitmq_client.consume(queue_name, _EchoHandler(rabbitmq_client))
+
+        await rabbitmq_client.rpc_call(queue_name, {"first": True})
+        first_queue = rabbitmq_client._reply_queue_name
+
+        await rabbitmq_client.rpc_call(queue_name, {"second": True})
+        second_queue = rabbitmq_client._reply_queue_name
+
+        assert first_queue == second_queue

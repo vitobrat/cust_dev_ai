@@ -1,6 +1,8 @@
 """Async RabbitMQ client for publishing and consuming JSON messages."""
 
+import asyncio
 import json
+import uuid
 from logging import Logger
 from typing import Any, Protocol
 from urllib.parse import quote
@@ -9,6 +11,8 @@ import aio_pika
 
 from src.configs.config import RabbitMQConfigs
 from src.configs.log.logger import get_logger
+
+_RpcFutures = dict[str, asyncio.Future[dict[str, Any]]]
 
 
 class MessageHandler(Protocol):
@@ -49,6 +53,8 @@ class RabbitMQClient:
         _logger: Logger instance for this client.
         _connection: Active robust AMQP connection, or None before connect().
         _channel: Active AMQP channel, or None before connect().
+        _reply_queue_name: Name of the exclusive reply queue for RPC calls.
+        _pending_rpcs: Mapping of correlation_id to Future awaiting a reply.
     """
 
     _connection: aio_pika.abc.AbstractRobustConnection
@@ -64,6 +70,8 @@ class RabbitMQClient:
         self._logger: Logger = get_logger(f"{__name__}.{self.__class__.__name__}")
         self._connection: aio_pika.abc.AbstractRobustConnection | None = None
         self._channel: aio_pika.abc.AbstractChannel | None = None
+        self._reply_queue_name: str | None = None
+        self._pending_rpcs: _RpcFutures = {}
 
     async def connect(self) -> None:
         """Open a robust AMQP connection and create a channel.
@@ -79,12 +87,20 @@ class RabbitMQClient:
     async def close(self) -> None:
         """Close the AMQP connection and release all resources.
 
+        Cancels all pending RPC futures before closing the connection.
         Safe to call even if connect() was never called.
         """
         if self._connection is None:
             return
 
         self._logger.info("Closing RabbitMQ connection")
+
+        for future in self._pending_rpcs.values():
+            if not future.done():
+                future.cancel()
+        self._pending_rpcs.clear()
+        self._reply_queue_name = None
+
         await self._connection.close()
         self._connection = None
         self._channel = None
@@ -155,6 +171,52 @@ class RabbitMQClient:
         )
         self._logger.info("Consumer registered for queue '%s'", queue_name)
 
+    async def rpc_call(
+        self,
+        queue_name: str,
+        payload: dict[str, Any],
+        timeout: float = 30.0,
+    ) -> dict[str, Any]:
+        """Send an RPC request and wait for the reply from a remote consumer.
+
+        Creates an exclusive reply queue on first call, then reuses it for
+        all subsequent requests. Each request gets a unique correlation_id
+        so replies are matched to the correct caller.
+
+        Args:
+            queue_name: Target queue where the remote consumer listens.
+            payload: Arbitrary JSON-serialisable dictionary to send.
+            timeout: Maximum seconds to wait for a reply. Defaults to 30.
+
+        Returns:
+            Deserialised JSON payload from the reply message.
+
+        Raises:
+            asyncio.TimeoutError: If no reply arrives within the timeout.
+        """
+        reply_to = await self._ensure_reply_queue()
+        correlation_id = uuid.uuid4().hex
+
+        future: asyncio.Future[dict[str, Any]] = asyncio.get_running_loop().create_future()
+        self._pending_rpcs[correlation_id] = future
+
+        self._logger.debug("RPC call to '%s' with correlation_id='%s'", queue_name, correlation_id)
+
+        message = aio_pika.Message(
+            body=json.dumps(payload).encode(),
+            content_type="application/json",
+            reply_to=reply_to,
+            correlation_id=correlation_id,
+        )
+        await self._channel.default_exchange.publish(message, routing_key=queue_name)
+
+        try:
+            return await asyncio.wait_for(future, timeout=timeout)
+        except asyncio.TimeoutError:
+            self._pending_rpcs.pop(correlation_id, None)
+            self._logger.warning("RPC call to '%s' timed out (correlation_id='%s')", queue_name, correlation_id)
+            raise
+
     @property
     def _url(self) -> str:
         """Build an AMQP connection URL from stored configs.
@@ -195,3 +257,47 @@ class RabbitMQClient:
                 correlation_id,
                 payload,
             )
+
+    async def _ensure_reply_queue(self) -> str:
+        """Create an exclusive reply queue and start consuming on first call.
+
+        The queue is auto-deleted when the connection closes. Subsequent
+        calls return the cached queue name without re-declaring.
+
+        Returns:
+            Name of the exclusive reply queue assigned by the broker.
+        """
+        if self._reply_queue_name is not None:
+            return self._reply_queue_name
+
+        queue = await self._channel.declare_queue("", exclusive=True)
+        self._reply_queue_name = queue.name
+        await queue.consume(self._on_reply_message)
+        self._logger.info("Exclusive reply queue '%s' created", self._reply_queue_name)
+        return self._reply_queue_name
+
+    async def _on_reply_message(
+        self,
+        message: aio_pika.abc.AbstractIncomingMessage,
+    ) -> None:
+        """Resolve a pending RPC future when a reply arrives.
+
+        Messages with unknown or missing correlation_id are logged and
+        silently discarded — they may be stale replies for timed-out calls.
+
+        Args:
+            message: Incoming reply message from the exclusive queue.
+        """
+        async with message.process():
+            correlation_id = message.correlation_id
+            if correlation_id is None:
+                self._logger.warning("Reply without correlation_id received, ignoring")
+                return
+
+            future = self._pending_rpcs.pop(correlation_id, None)
+            if future is None:
+                self._logger.warning("No pending RPC for correlation_id='%s', ignoring", correlation_id)
+                return
+
+            if not future.done():
+                future.set_result(json.loads(message.body))
