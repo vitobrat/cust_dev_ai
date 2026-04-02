@@ -5,6 +5,14 @@ class TaskError(Exception):
     """Base exception for task domain."""
 
 
+class TaskQueueError(TaskError):
+    """Raised when a queue operation fails.
+
+    Typical causes: corrupted payload in the queue,
+    serialization or validation errors.
+    """
+
+
 class TaskNotFound(TaskError):
     """Raised when a requested task entity does not exist."""
 

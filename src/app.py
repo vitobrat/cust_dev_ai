@@ -1,4 +1,6 @@
-"""FastAPI application entry point."""
+"""FastAPI application entry point.
+claude --resume 6b17804a-5368-4558-90e1-9fd87563c371
+(редис клиент)"""
 
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -20,6 +22,8 @@ from src.domains.task.app.requests.router import router as task_router
 from src.domains.user.app.requests.router import router as user_router
 from src.infrastructure.containers.domain import DomainContainer
 from src.infrastructure.rabbitmq.client import RabbitMQClient
+from src.infrastructure.db.postgres.client import DatabaseClient
+from src.infrastructure.db.redis.client import RedisClient
 
 settings = AppConfigs.init()
 
@@ -35,13 +39,21 @@ def init_containers() -> DomainContainer:
     return container
 
 
-async def _shutdown(rabbitmq_client: RabbitMQClient) -> None:
+async def _shutdown(
+  rabbitmq_client: RabbitMQClient, 
+  redis: RedisClient, 
+  postgres: DatabaseClient
+) -> None:
     """Close all external service connections gracefully.
 
     Args:
         rabbitmq_client: RabbitMQ client to close.
+        redis_client: Redis client to close
+        postgres_client: Postgres client to close
     """
     await rabbitmq_client.close()
+    await postgres.dispose()
+    await redis.close()
     logger.info("Service is shutting down correctly")
 
 
@@ -63,12 +75,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     container = init_containers()
     app.state.container = container
 
-    rabbitmq_client = container.infrastructure.rabbitmq_client()
+    rabbitmq_client = container.infrastructure.rabbitmq_client()  # type: ignore[operator]
+    redis = container.infrastructure.redis_client()  # type: ignore[operator]
+    postgres = container.infrastructure.db_client()  # type: ignore[operator]
 
     try:
         yield
     finally:
-        await _shutdown(rabbitmq_client)
+        await _shutdown(rabbitmq_client, redis, postgres)
 
 
 limiter = Limiter(key_func=get_remote_address)

@@ -1,5 +1,6 @@
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock
+from typing import Any, Generator
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import instructor
 import pytest
@@ -13,6 +14,8 @@ from langfuse.langchain import CallbackHandler
 from pydantic import BaseModel
 
 from src.configs.config import RabbitMQConfigs
+from src.infrastructure.db.redis.client import RedisClient
+from src.infrastructure.db.redis.repository import BaseRedisRepository
 from src.infrastructure.graph.base_graph import BaseGraph
 from src.infrastructure.llm.llm_adapter import LLMAdapter
 from src.infrastructure.prompt.base_prompt_manager import BasePromptManager
@@ -72,6 +75,21 @@ def mock_prompt_builder() -> BasePromptManager:
 def mock_instructor_client() -> instructor.AsyncInstructor:
     mock_instructor_client = MagicMock()
     return mock_instructor_client
+
+
+@pytest.fixture
+def mock_redis_client() -> Generator[Any, Any, Any]:
+    """Provide a RedisClient with mocked underlying Redis connection."""
+    with patch("redis.asyncio.from_url") as mock_from_url:
+        mock_redis = AsyncMock()
+        mock_from_url.return_value = mock_redis
+        yield RedisClient(redis_url="redis://:test@localhost:6379/0")
+
+
+@pytest.fixture
+def mock_redis_repository(mock_redis_client: Any) -> Any:
+    """Provide a BaseRedisRepository backed by the mocked RedisClient."""
+    return BaseRedisRepository(mock_redis_client)
 
 
 @pytest.fixture

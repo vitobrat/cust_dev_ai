@@ -212,7 +212,7 @@ class DomainContainer(containers.DeclarativeContainer):
     """
 
     config: AppConfigs = providers.Configuration()
-    infrastructure = providers.Container(
+    infrastructure: InfrastructureContainer = providers.Container(
         InfrastructureContainer,
         config=config,
     )
