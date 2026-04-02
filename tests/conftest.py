@@ -22,9 +22,12 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.pool import NullPool
 from testcontainers.postgres import PostgresContainer
+from testcontainers.redis import RedisContainer
 
 from src.infrastructure.containers.root import RootContainer
 from src.infrastructure.db.postgres.client import DatabaseClient
+from src.infrastructure.db.redis.client import RedisClient
+from src.infrastructure.db.redis.repository import BaseRedisRepository
 from src.infrastructure.llm.llm_adapter import LLMAdapter, LLMProtocol
 from tests.integration.db.integration_utils import run_migrations
 from tests.schema import DummyOutputSchema
@@ -126,6 +129,54 @@ async def db_client(session: AsyncSession) -> AsyncGenerator[DatabaseClient, Non
         DatabaseClient-compatible object for repository construction.
     """
     yield TestDatabaseClient(session)
+
+
+@pytest.fixture(scope="session")
+def redis_container() -> str:
+    """Provide a Redis testcontainer for integration tests.
+
+    Spins up a Redis 7 Alpine container with password authentication
+    and provides the connection URL for the test session.
+
+    Yields:
+        Redis connection URL string (e.g., ``redis://:password@host:port/0``).
+    """
+    with RedisContainer("redis:7-alpine", password="test_redis_pass") as redis:
+        host = redis.get_container_host_ip()
+        port = redis.get_exposed_port(6379)
+        yield f"redis://:test_redis_pass@{host}:{port}/0"
+
+
+@pytest_asyncio.fixture(scope="function")
+async def redis_client(redis_container: str) -> AsyncGenerator[RedisClient, None]:
+    """Provide an async RedisClient for each test function.
+
+    After each test the database is flushed to ensure isolation,
+    then the client connection pool is closed.
+
+    Args:
+        redis_container: Connection URL from the testcontainer fixture.
+
+    Yields:
+        Configured RedisClient instance.
+    """
+    test_redis_client = RedisClient(redis_url=redis_container, max_connections=5)
+    yield test_redis_client
+    await test_redis_client.client.flushdb()
+    await test_redis_client.close()
+
+
+@pytest_asyncio.fixture(scope="function")
+async def redis_repository(redis_client: RedisClient) -> BaseRedisRepository:
+    """Provide a BaseRedisRepository backed by the test RedisClient.
+
+    Args:
+        redis_client: Test RedisClient connected to the testcontainer.
+
+    Returns:
+        BaseRedisRepository instance for integration testing.
+    """
+    return BaseRedisRepository(redis_client)
 
 
 @pytest.fixture(scope="session")

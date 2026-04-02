@@ -1,4 +1,6 @@
-"""FastAPI application entry point."""
+"""FastAPI application entry point.
+claude --resume 6b17804a-5368-4558-90e1-9fd87563c371
+(редис клиент)"""
 
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -19,11 +21,19 @@ from src.domains.sub_interview.app.requests.router import (
 from src.domains.task.app.requests.router import router as task_router
 from src.domains.user.app.requests.router import router as user_router
 from src.infrastructure.containers.domain import DomainContainer
+from src.infrastructure.db.postgres.client import DatabaseClient
+from src.infrastructure.db.redis.client import RedisClient
 
 settings = AppConfigs.init()
 
 setup_logger(settings.logger.logging_config_file)
 logger = get_logger(__name__)
+
+
+async def lifespan_shut_down(redis: RedisClient, postgres: DatabaseClient) -> None:
+    logger.info("Service is shutting down correctly")
+    await postgres.dispose()
+    await redis.close()
 
 
 @asynccontextmanager
@@ -46,10 +56,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     container.wire(packages=["src.domains"])
     app.state.container = container
 
+    redis = container.infrastructure.redis_client()  # type: ignore[operator]
+    postgres = container.infrastructure.db_client()  # type: ignore[operator]
+
     try:
         yield
     finally:
-        logger.info("Service is shutting down correctly")
+        await lifespan_shut_down(redis, postgres)
 
 
 limiter = Limiter(key_func=get_remote_address)

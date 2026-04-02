@@ -94,6 +94,36 @@ class PostgresDBConfigs(_BaseValidatedConfig):
         return f"{driver}://{auth}@{location}/{self.db}?{query_params}"
 
 
+class RedisConfigs(_BaseValidatedConfig):
+    """Redis connection configuration settings.
+
+    Attributes:
+        host: Redis server host from REDIS_HOST environment variable.
+        port: Redis server port from REDIS_PORT environment variable.
+        password: Redis password from REDIS_PASSWORD environment variable.
+        db: Redis logical database number (0-15) from REDIS_DB environment variable.
+        max_connections: Maximum number of connections in the pool.
+        decode_responses: If True, decode byte responses to strings.
+    """
+
+    host: str = Field(alias="REDIS_HOST")
+    port: int = Field(alias="REDIS_PORT")
+    password: str = Field(alias="REDIS_PASSWORD")
+    db: int = Field(default=0, alias="REDIS_DB")
+    max_connections: int = Field(default=10, description="Maximum connections in the Redis pool.")
+    decode_responses: bool = Field(default=True, description="Decode byte responses to strings.")
+
+    @computed_field
+    @property
+    def redis_url(self) -> str:
+        """Construct Redis connection URL.
+
+        Returns:
+            Redis URL in format ``redis://:password@host:port/db``.
+        """
+        return f"redis://:{self.password}@{self.host}:{self.port}/{self.db}"
+
+
 class BaseDomainConfig(_BaseValidatedConfig):
     """Base configuration for domain-specific settings.
 
@@ -204,6 +234,7 @@ class AppConfigs(_BaseValidatedConfig):
     logger: LoggerConfigs = Field(default_factory=LoggerConfigs)
     persona: PersonaConfig
     postgres: PostgresDBConfigs
+    redis: RedisConfigs
     langfuse: LangfuseConfigs
     llm: LLMConfigs
 
