@@ -11,7 +11,7 @@ class PersonaPromptManager(BasePromptManager):
         previous_segments: str,
     ) -> list[BaseMessage]:
         """Build the prompt for analysing the user prompt to find relevant user segments."""
-        template = self.get_template("user_segment_search", "analyse_user_prompt.md")
+        template = self.get_template("user_segment_search", "analyse_user_prompt")
         system_prompt = template.format(
             user_prompt=user_prompt,
             previous_segments=previous_segments,
@@ -24,8 +24,8 @@ class PersonaPromptManager(BasePromptManager):
         analysis_result: str | None,
     ) -> list[BaseMessage]:
         """Build the prompt for finding user segments based on the analysed user prompt."""
-        template = self.get_template("user_segment_search", "find_user_segment.md")
-        output_example = self.get_template("user_segment_search", "find_user_segment_output_example.md")
+        template = self.get_template("user_segment_search", "find_user_segment")
+        output_example = self.get_template("user_segment_search", "find_user_segment_output_example")
 
         system_prompt = template.format(
             user_prompt=user_prompt,
@@ -42,8 +42,8 @@ class PersonaPromptManager(BasePromptManager):
         segment_description: str,
     ) -> list[BaseMessage]:
         """Build the prompt for verifying the found user segment."""
-        template = self.get_template("user_segment_search", "verify_user_segment.md")
-        output_example = self.get_template("user_segment_search", "verify_user_segment_output_example.md")
+        template = self.get_template("user_segment_search", "verify_user_segment")
+        output_example = self.get_template("user_segment_search", "verify_user_segment_output_example")
 
         system_prompt = template.format(
             segment_name=segment_name,
@@ -60,8 +60,11 @@ class PersonaPromptManager(BasePromptManager):
         segment_description: str,
     ) -> list[BaseMessage]:
         """Build the prompt for generating a persona based on the user segment."""
-        template = self.get_template("demographic_attribute_person", "generate_persona.md")
-        output_example = self.get_template("generate_persona", "generate_persona_output_example.md")
+        template = self.get_template("generate_persona", "generate_single_persona")
+        output_example = self.get_template("generate_persona", "generate_single_persona_output_example")
+
+        assert template, "Prompt to generate persona not found"
+        assert "json" in template.lower(), "No structured json output example in generate persona prompt"
 
         system_prompt = template.format(
             segment_name=segment_name,
@@ -76,7 +79,7 @@ class PersonaPromptManager(BasePromptManager):
         segment_description: str,
     ) -> list[BaseMessage]:
         """Build the prompt for generating a persona biography based on the demographic attributes."""
-        template = self.get_template("generate_persona", "generate_persona_biography.md")
+        template = self.get_template("generate_persona", "generate_persona_biography")
 
         system_prompt = template.format(
             demographic_attributes=demographic_attributes,
@@ -90,7 +93,7 @@ class PersonaPromptManager(BasePromptManager):
         segment_description: str,
     ) -> list[BaseMessage]:
         """Build the prompt for generating a persona experiences based on the demographic attributes."""
-        template = self.get_template("generate_persona", "generate_persona_experiences.md")
+        template = self.get_template("generate_persona", "generate_persona_experiences")
 
         system_prompt = template.format(
             demographic_attributes=demographic_attributes,

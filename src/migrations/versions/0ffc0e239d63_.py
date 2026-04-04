@@ -18,7 +18,7 @@ down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
-task_type_enum = sa.Enum("PERSONA_GENERATION", "SUB_INTERVIEW_GENERATION", "REPORT_GENERATION", name="tasktype")
+task_type_enum = sa.Enum("PERSONAS_GENERATION", "SUB_INTERVIEW_GENERATION", "REPORT_GENERATION", name="tasktype")
 task_status_enum = sa.Enum(
     "CREATED",
     "PENDING",

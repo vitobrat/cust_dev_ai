@@ -22,6 +22,7 @@ FROM builder AS dev
 
 RUN poetry install --no-root
 WORKDIR /app
+ENV PYTHONPATH=/app
 
 COPY alembic.ini pytest.ini ./
 COPY config/ ./config/

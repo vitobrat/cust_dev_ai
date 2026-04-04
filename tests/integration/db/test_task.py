@@ -69,7 +69,7 @@ class TestTaskRepositoryCreate:
         """Verify that create() correctly persists the type field."""
         # Arrange
         repo = TaskRepository(db_client)
-        task_type = TaskType.PERSONA_GENERATION
+        task_type = TaskType.PERSONAS_GENERATION
         task_data = create_task_schema_factory(user_id=user.id, type=task_type)
 
         # Act

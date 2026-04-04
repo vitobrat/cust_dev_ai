@@ -74,7 +74,7 @@ class InfrastructureContainer(containers.DeclarativeContainer):
         api_key=config.llm.api_key,
         temperature=config.llm.temperature,
         max_tokens=config.llm.max_tokens,
-        base_url=config.llm.base_llm_url,
+        base_url=config.llm.base_url,
     )
 
     llm_adapter: LLMAdapter = providers.Factory(

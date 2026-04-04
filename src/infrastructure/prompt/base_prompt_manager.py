@@ -104,7 +104,9 @@ class BasePromptManager:
                 continue
 
             category_name = category_dir.name
-            self._prompts[category_name] = self._load_prompts_in_category(category_dir)
+            category_prompts = self._load_prompts_in_category(category_dir)
+            self._prompts[category_name] = category_prompts
+            loaded_count += len(category_prompts)
 
         self._logger.info(
             f"Loaded {loaded_count} prompt templates from {self._prompts_dir}",

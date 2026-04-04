@@ -98,10 +98,10 @@ class RedisConfigs(_BaseValidatedConfig):
         timeout: Seconds to wait for a message in BRPOP.
     """
 
-    host: str = Field(alias="REDIS_HOST")
-    port: int = Field(alias="REDIS_PORT")
+    host: str
+    port: int
     password: str = Field(alias="REDIS_PASSWORD")
-    db: int = Field(default=0, alias="REDIS_DB")
+    db: int = Field(default=0)
     max_connections: int = Field(default=10, description="Maximum connections in the Redis pool.")
     decode_responses: bool = Field(default=True, description="Decode byte responses to strings.")
     timeout: int = Field(default=5, description="Timeout for waiting a message from redis")

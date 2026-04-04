@@ -4,8 +4,7 @@ log_level: "DEBUG"
 workers_number: 1
 
 persona:
-  prompts_dir: "src/domains/persona/infrastructure/prompt"
-  graph_recursion_limit: 5
+  graph_recursion_limit: 100
 
 postgres:
   pool_size: 5
@@ -13,10 +12,18 @@ postgres:
   echo: false
 
 redis:
+  host: redis
+  port: 6379
+  db: 0
   max_connections: 10
 
+rabbitmq:
+  host: "rabbitmq"
+  port: 5672
+  vhost: "ml"
+
 llm:
-  model_name: "openai/gpt-oss-120b"
-  base_url: "https://openrouter.ai/api/v1/chat/completions"
+  model_name: "qwen/qwen3.5-27b"
+  base_url: "https://openrouter.ai/api/v1"
   temperature: 0.1
   max_tokens: 4096

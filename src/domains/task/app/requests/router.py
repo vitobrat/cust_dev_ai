@@ -7,21 +7,21 @@ from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, Query, Response, status
 
 from src.configs.log.logger import get_logger
-from src.domains.task.app.requests.schema import (  # noqa: WPS235
-    DeleteTaskResponse,
-    GetCountTaskResponse,
-    GetTaskResponse,
+from src.domains.task.app.requests.schema import (
     GetTasksRequest,
-    GetTasksResponse,
     PostCreateTaskRequest,
-    PostCreateTaskResponse,
+    PostRedisRegisterGeneratePersonaTaskRequest,
     PutUpdateTaskRequest,
-    PutUpdateTaskResponse,
+    TaskBoolResponse,
+    TaskCountResponse,
+    TaskEntityResponse,
+    TaskListResponse,
 )
 from src.domains.task.app.usecases.service import TaskService
-from src.domains.task.exceptions import TaskError, TaskNotFound
+from src.domains.task.exceptions import TaskError, TaskNotFound, TaskQueueError
 from src.infrastructure.containers.domain import DomainContainer
 from src.schemas.api_base import ResponseBase, StatusType
+from src.schemas.persona import GeneratePersonasInputData
 
 _logger = get_logger(__name__)
 
@@ -31,13 +31,60 @@ router = APIRouter(
 )
 
 
-@router.post("/", response_model=PostCreateTaskResponse | ResponseBase, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/generate_personas_task",
+    response_model=TaskBoolResponse | ResponseBase,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+@inject
+async def redis_register_generation_personas_task(
+    response: Response,
+    request_data: PostRedisRegisterGeneratePersonaTaskRequest,
+    task_service: TaskService = Depends(Provide[DomainContainer.task.task_service]),
+) -> TaskBoolResponse | ResponseBase:
+    """Register a persona generation task and enqueue it in Redis."""
+    try:
+        await task_service.register_generate_personas_task(
+            user_id=request_data.user_id,
+            generate_personas_input=GeneratePersonasInputData(
+                interview_id=request_data.interview_id,
+                segment_name=request_data.segment_name,
+                segment_description=request_data.segment_description,
+                person_count=request_data.person_count,
+            ),
+        )
+    except TaskQueueError as exc:
+        _logger.error("Task registration generate personas in redis queue failed: %s", exc)
+        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+        return ResponseBase(
+            details=f"Task registration generate personas in redis queue failed: {exc}",
+            status=StatusType.ERROR,
+        )
+    except TaskError as exc:
+        _logger.error("Task registration generate personas failed: %s", exc)
+        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+        return ResponseBase(
+            details=f"Task registration generate personas failed: {exc}",
+            status=StatusType.ERROR,
+        )
+    except Exception as exc:
+        _logger.exception("Unexpected error during task registration generate personas")
+        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+        return ResponseBase(
+            details=f"Internal server error: {exc}",
+            status=StatusType.ERROR,
+        )
+
+    return TaskBoolResponse(msg=True, status=StatusType.SUCCESS)
+
+
+@router.post("/", response_model=TaskEntityResponse | ResponseBase, status_code=status.HTTP_201_CREATED)
 @inject
 async def create_task(
     response: Response,
     request_data: PostCreateTaskRequest,
     task_service: TaskService = Depends(Provide[DomainContainer.task.task_service]),
-) -> PostCreateTaskResponse | ResponseBase:
+) -> TaskEntityResponse | ResponseBase:
     """Create a new task.
 
     Args:
@@ -59,15 +106,15 @@ async def create_task(
         response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
         return ResponseBase(details=f"Internal server error: {exc}", status=StatusType.ERROR)
 
-    return PostCreateTaskResponse(msg=new_task, status=StatusType.SUCCESS)
+    return TaskEntityResponse(msg=new_task, status=StatusType.SUCCESS)
 
 
-@router.get("/count", response_model=GetCountTaskResponse | ResponseBase, status_code=status.HTTP_200_OK)
+@router.get("/count", response_model=TaskCountResponse | ResponseBase, status_code=status.HTTP_200_OK)
 @inject
 async def count_tasks(
     response: Response,
     task_service: TaskService = Depends(Provide[DomainContainer.task.task_service]),
-) -> GetCountTaskResponse | ResponseBase:
+) -> TaskCountResponse | ResponseBase:
     """Get total count of tasks.
 
     Args:
@@ -84,21 +131,21 @@ async def count_tasks(
         response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
         return ResponseBase(details=f"Internal server error: {exc}", status=StatusType.ERROR)
 
-    return GetCountTaskResponse(msg=count, status=StatusType.SUCCESS)
+    return TaskCountResponse(msg=count, status=StatusType.SUCCESS)
 
 
-@router.get("/", response_model=GetTasksResponse | ResponseBase, status_code=status.HTTP_200_OK)
+@router.get("/", response_model=TaskListResponse | ResponseBase, status_code=status.HTTP_200_OK)
 @inject
 async def get_tasks(
     response: Response,
     pagination: Annotated[GetTasksRequest, Query()],
     task_service: TaskService = Depends(Provide[DomainContainer.task.task_service]),
-) -> GetTasksResponse | ResponseBase:
+) -> TaskListResponse | ResponseBase:
     """Get a paginated list of tasks.
 
     Args:
         response: FastAPI response object used to override the status code on errors.
-        params: Pagination query parameters (limit, offset).
+        pagination: Pagination query parameters (limit, offset).
         task_service: Injected task service.
 
     Returns:
@@ -111,16 +158,16 @@ async def get_tasks(
         response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
         return ResponseBase(details=f"Internal server error: {exc}", status=StatusType.ERROR)
 
-    return GetTasksResponse(msg=tasks, status=StatusType.SUCCESS)
+    return TaskListResponse(msg=tasks, status=StatusType.SUCCESS)
 
 
-@router.get("/{task_id}", response_model=GetTaskResponse | ResponseBase, status_code=status.HTTP_200_OK)
+@router.get("/{task_id}", response_model=TaskEntityResponse | ResponseBase, status_code=status.HTTP_200_OK)
 @inject
 async def get_task(
     response: Response,
     task_id: uuid.UUID,
     task_service: TaskService = Depends(Provide[DomainContainer.task.task_service]),
-) -> GetTaskResponse | ResponseBase:
+) -> TaskEntityResponse | ResponseBase:
     """Get a single task by ID.
 
     Args:
@@ -142,17 +189,17 @@ async def get_task(
         response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
         return ResponseBase(details=f"Internal server error: {exc}", status=StatusType.ERROR)
 
-    return GetTaskResponse(msg=task, status=StatusType.SUCCESS)
+    return TaskEntityResponse(msg=task, status=StatusType.SUCCESS)
 
 
-@router.put("/{task_id}", response_model=PutUpdateTaskResponse | ResponseBase, status_code=status.HTTP_200_OK)
+@router.put("/{task_id}", response_model=TaskEntityResponse | ResponseBase, status_code=status.HTTP_200_OK)
 @inject
 async def update_task(
     response: Response,
     task_id: uuid.UUID,
     request_data: PutUpdateTaskRequest,
     task_service: TaskService = Depends(Provide[DomainContainer.task.task_service]),
-) -> PutUpdateTaskResponse | ResponseBase:
+) -> TaskEntityResponse | ResponseBase:
     """Update a task by ID.
 
     Args:
@@ -178,16 +225,16 @@ async def update_task(
         response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
         return ResponseBase(details=f"Internal server error: {exc}", status=StatusType.ERROR)
 
-    return PutUpdateTaskResponse(msg=updated_task, status=StatusType.SUCCESS)
+    return TaskEntityResponse(msg=updated_task, status=StatusType.SUCCESS)
 
 
-@router.delete("/{task_id}", response_model=DeleteTaskResponse | ResponseBase, status_code=status.HTTP_200_OK)
+@router.delete("/{task_id}", response_model=TaskBoolResponse | ResponseBase, status_code=status.HTTP_200_OK)
 @inject
 async def delete_task(
     response: Response,
     task_id: uuid.UUID,
     task_service: TaskService = Depends(Provide[DomainContainer.task.task_service]),
-) -> DeleteTaskResponse | ResponseBase:
+) -> TaskBoolResponse | ResponseBase:
     """Delete a task by ID.
 
     Args:
@@ -209,4 +256,4 @@ async def delete_task(
         response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
         return ResponseBase(details=f"Internal server error: {exc}", status=StatusType.ERROR)
 
-    return DeleteTaskResponse(msg=True, status=StatusType.SUCCESS)
+    return TaskBoolResponse(msg=True, status=StatusType.SUCCESS)

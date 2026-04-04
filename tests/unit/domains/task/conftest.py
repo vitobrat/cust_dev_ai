@@ -35,7 +35,7 @@ def sample_task() -> TaskSchema:
     """Provide a valid TaskSchema instance for tests."""
     return TaskSchema(
         task_id=uuid.uuid4(),
-        type=TaskType.PERSONA_GENERATION,
+        type=TaskType.PERSONAS_GENERATION,
         status=TaskStatus.PENDING,
         progress=0,
         error_log=None,

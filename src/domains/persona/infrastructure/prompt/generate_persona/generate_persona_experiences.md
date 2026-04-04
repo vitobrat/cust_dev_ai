@@ -24,7 +24,7 @@ Your narrative must naturally provide answers to these internal questions throug
 
 ### Input Data Processing
 
-Analyze the following blocks from the provided: `{demographic_attribute}`
+Analyze the following blocks from the provided: `{demographic_attributes}`
 
 - **PersonalInfoBlock:** Extract name, age, gender, and marital context.
 - **ProblemBlock:** This is the **narrative climax**. Detail the specific problem, the spendings (time/money), the suffering, and the budget control.

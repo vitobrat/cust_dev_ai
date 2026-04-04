@@ -18,14 +18,13 @@ class StatusType(Enum):
 
 
 class VerboseBase(BaseModel):
-    """Base model that includes an optional identifier.
+    """Base model that includes an identifier.
 
     Attributes:
-        id: Optional integer primary key. ``None`` indicates that the object
-            has not been persisted or the identifier is not applicable.
+        id: uuid primary key.
     """
 
-    id: Optional[uuid.UUID] = None
+    id: uuid.UUID
 
 
 class PaginationBase(BaseModel):

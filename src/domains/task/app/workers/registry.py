@@ -19,7 +19,7 @@ def build_handler_registry(
         Dictionary mapping each task type to its handler.
     """
     return {
-        TaskType.PERSONA_GENERATION: container.persona.persona_generation_handler(),  # type: ignore[operator]
+        TaskType.PERSONAS_GENERATION: container.persona.persona_generation_handler(),  # type: ignore[operator]
         TaskType.SUB_INTERVIEW_GENERATION: (
             container.sub_interview.sub_interview_generation_handler()  # type: ignore[operator]
         ),

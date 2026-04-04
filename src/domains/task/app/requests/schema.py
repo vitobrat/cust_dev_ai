@@ -1,5 +1,9 @@
 """Request and response schemas for the Task API endpoints."""
 
+import uuid
+
+from pydantic import BaseModel
+
 from src.schemas.api_base import PaginationBase, ResponseBase
 from src.schemas.task import (
     CreateTaskSchema,
@@ -8,49 +12,47 @@ from src.schemas.task import (
 )
 
 
+class PostRedisRegisterGeneratePersonaTaskRequest(BaseModel):
+    """Request schema for registering a persona generation task in Redis."""
+
+    user_id: uuid.UUID
+    interview_id: uuid.UUID
+    segment_name: str
+    segment_description: str
+    person_count: int
+
+
 class PostCreateTaskRequest(CreateTaskSchema):
     """Request schema for task creation."""
-
-
-class PostCreateTaskResponse(ResponseBase):
-    """Response schema for task creation."""
-
-    msg: TaskRelEntitySchema
 
 
 class GetTasksRequest(PaginationBase):
     """Pagination query parameters for task list endpoint."""
 
 
-class GetTaskResponse(ResponseBase):
-    """Response schema for a single task retrieval."""
+class PutUpdateTaskRequest(UpdateTaskSchema):
+    """Request schema for partial task update."""
+
+
+class TaskEntityResponse(ResponseBase):
+    """Response schema wrapping a single task entity."""
 
     msg: TaskRelEntitySchema
 
 
-class GetTasksResponse(ResponseBase):
+class TaskListResponse(ResponseBase):
     """Response schema for paginated task list retrieval."""
 
     msg: list[TaskRelEntitySchema]
 
 
-class GetCountTaskResponse(ResponseBase):
+class TaskCountResponse(ResponseBase):
     """Response schema for task count."""
 
     msg: int
 
 
-class PutUpdateTaskRequest(UpdateTaskSchema):
-    """Request schema for partial task update."""
-
-
-class PutUpdateTaskResponse(ResponseBase):
-    """Response schema for task update."""
-
-    msg: TaskRelEntitySchema
-
-
-class DeleteTaskResponse(ResponseBase):
-    """Response schema for task deletion."""
+class TaskBoolResponse(ResponseBase):
+    """Response schema for boolean result operations."""
 
     msg: bool

@@ -76,6 +76,10 @@ up:
 down:
 	$(DC_DEV) --env-file $(ENV_FILE) down
 
-## logs: Посмотреть логи БД (или другого сервиса)
+## logs: Логи сервиса (по умолчанию app, переопределить: make logs service=triton)
 logs:
-	$(DC_DEV) --env-file $(ENV_FILE) logs -f app
+	$(DC_DEV) --env-file $(ENV_FILE) logs -f $(service)
+
+## logs-all: Логи всех сервисов
+logs-all:
+	$(DC_DEV) --env-file $(ENV_FILE) logs -f

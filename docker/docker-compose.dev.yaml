@@ -28,12 +28,40 @@ services:
           cpus: '0.2'
           memory: 512M
 
+  redis_worker:
+    container_name: redis_worker
+    build:
+      context: ..
+      dockerfile: ./docker/Dockerfile
+      target: dev
+    restart: always
+    command: ["python", "src/redis_worker.py"]
+
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+    networks:
+      - backend_network
+
+    deploy:
+      resources:
+        limits:
+          cpus: '0.8'
+          memory: 1024M
+        reservations:
+          cpus: '0.2'
+          memory: 512M
+
   db:
     container_name: db
     image: postgres:16-alpine
     restart: unless-stopped
 
     environment:
+      POSTGRES_HOST: db
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
@@ -70,6 +98,7 @@ services:
     restart: unless-stopped
 
     environment:
+      REDIS_HOST: redis
       REDIS_PASSWORD: ${REDIS_PASSWORD}
 
     command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]

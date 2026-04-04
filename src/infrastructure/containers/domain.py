@@ -188,7 +188,7 @@ class TaskContainer(containers.DeclarativeContainer):
         db_client=infrastructure.db_client,
     )
 
-    redis_repository: TaskQueueRepository = providers.Singleton(
+    redis_task_repository: TaskQueueRepository = providers.Singleton(
         TaskQueueRepository,
         redis_client=infrastructure.redis_client,
     )
@@ -196,6 +196,7 @@ class TaskContainer(containers.DeclarativeContainer):
     task_service: TaskService = providers.Factory(
         TaskService,
         tasks_repository=tasks_repository,
+        redis_task_repository=redis_task_repository,
     )
 
 

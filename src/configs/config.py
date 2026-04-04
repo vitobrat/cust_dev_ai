@@ -17,13 +17,13 @@ from src.configs.consts import (
     PROJECT_ROOT,
     LogLevels,
 )
-from src.configs.infrastructure import (  # noqa: WPS113
-    LangfuseConfigs as LangfuseConfigs,
+from src.configs.infrastructure_config import LangfuseConfigs as LangfuseConfigs
+from src.configs.infrastructure_config import LLMConfigs as LLMConfigs
+from src.configs.infrastructure_config import (
+    PostgresDBConfigs as PostgresDBConfigs,
 )
-from src.configs.infrastructure import LLMConfigs as LLMConfigs
-from src.configs.infrastructure import PostgresDBConfigs as PostgresDBConfigs
-from src.configs.infrastructure import RabbitMQConfigs as RabbitMQConfigs
-from src.configs.infrastructure import RedisConfigs as RedisConfigs
+from src.configs.infrastructure_config import RabbitMQConfigs as RabbitMQConfigs
+from src.configs.infrastructure_config import RedisConfigs as RedisConfigs
 from src.configs.log.logger import get_logger
 
 dotenv_path = Path(PROJECT_ROOT, "config", ".env")
@@ -116,6 +116,7 @@ class PersonaConfig(BaseDomainConfig):
         graph_recursion_limit: Maximum recursion depth for persona LangGraph agent loops.
     """
 
+    prompts_dir: Path = Path(PROJECT_ROOT, "src", "domains", "persona", "infrastructure", "prompt")
     graph_recursion_limit: int = Field(default=5, description="Max recursion depth for LangGraph persona agent loops.")
 
 

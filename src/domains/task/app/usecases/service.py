@@ -3,15 +3,21 @@
 import uuid
 
 from src.configs.log.logger import get_logger
+from src.domains.task.app.constants import TaskStatus, TaskType
 from src.domains.task.db.postgres.repository import TaskRepository
+from src.domains.task.db.redis.repository import TaskQueueRepository
 from src.domains.task.exceptions import (
+    TaskCreationFailed,
     TaskDeletionFailed,
     TaskGetFailed,
+    TaskQueueError,
     TaskUpdateFailed,
 )
+from src.schemas.persona import GeneratePersonasInputData
 from src.schemas.task import (
     CreateTaskSchema,
     TaskRelEntitySchema,
+    TaskSchema,
     UpdateTaskSchema,
 )
 
@@ -24,11 +30,66 @@ class TaskService:
 
     Attributes:
         _tasks_repository: Repository for task persistence operations.
+        _redis_task_repository: Repository for task queue operations.
     """
 
-    def __init__(self, tasks_repository: TaskRepository) -> None:
+    def __init__(
+        self,
+        tasks_repository: TaskRepository,
+        redis_task_repository: TaskQueueRepository,
+    ) -> None:
         self._logger = get_logger(f"{__name__}.{self.__class__.__name__}")
         self._tasks_repository = tasks_repository
+        self._redis_task_repository = redis_task_repository
+
+    async def register_generate_personas_task(
+        self,
+        user_id: uuid.UUID,
+        generate_personas_input: GeneratePersonasInputData,
+    ) -> None:
+        """Create a task in Postgres and enqueue it in Redis.
+
+        If enqueue fails the task is marked as FAILED so it does not
+        remain stuck in PENDING state forever.
+
+        Args:
+            user_id: Owner of the task.
+            generate_personas_input: Input parameters for persona generation.
+
+        Raises:
+            TaskCreationFailed: If Postgres insert fails.
+            TaskQueueError: If Redis enqueue fails (task is marked FAILED first).
+        """
+        task_entity = await self.create_task(
+            CreateTaskSchema(
+                user_id=user_id,
+                type=TaskType.PERSONAS_GENERATION,
+                input_params=generate_personas_input,
+            ),
+        )
+        self._logger.debug("Task type %s successfully created in DB", task_entity.type)
+
+        try:
+            queue_length = await self._redis_task_repository.enqueue(
+                TaskSchema(
+                    task_id=task_entity.id,
+                    user_id=user_id,
+                    type=TaskType.PERSONAS_GENERATION,
+                    input_params=generate_personas_input,
+                ),
+            )
+        except TaskQueueError:
+            await self._tasks_repository.update_by_id(
+                task_entity.id,
+                UpdateTaskSchema(status=TaskStatus.FAILED),
+            )
+            raise
+
+        self._logger.debug(
+            "Task %s enqueued in Redis, queue length: %s",
+            task_entity.id,
+            queue_length,
+        )
 
     async def create_task(self, create_task_data: CreateTaskSchema) -> TaskRelEntitySchema:
         """Persist a new task entity.
@@ -38,8 +99,17 @@ class TaskService:
 
         Returns:
             Newly created task entity with generated ID and timestamps.
+
+        Raises:
+            TaskCreationFailed: If the database insert fails.
         """
-        return await self._tasks_repository.create(create_task_data)
+        try:
+            task_entity = await self._tasks_repository.create(create_task_data)
+        except Exception as exc:
+            self._logger.error("Task creation failed: %s", exc)
+            raise TaskCreationFailed(f"Failed to create task: {exc}") from exc
+
+        return task_entity
 
     async def get_task(self, task_id: uuid.UUID) -> TaskRelEntitySchema:
         """Retrieve a single task by its identifier.

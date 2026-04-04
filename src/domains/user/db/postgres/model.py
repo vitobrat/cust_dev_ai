@@ -32,9 +32,11 @@ class UsersOrm(Base):
     interviews: Mapped[list["InterviewsOrm"]] = relationship(
         back_populates="user",
         lazy="selectin",
+        passive_deletes="all",
     )
 
     tasks: Mapped[list["TasksOrm"]] = relationship(
         back_populates="user",
         lazy="selectin",
+        passive_deletes="all",
     )

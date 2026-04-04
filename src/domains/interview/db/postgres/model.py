@@ -54,9 +54,11 @@ class InterviewsOrm(Base):
     personas: Mapped[list["PersonasOrm"]] = relationship(
         back_populates="interview",
         lazy="selectin",
+        passive_deletes="all",
     )
 
     sub_interviews: Mapped[list["SubInterviewsOrm"]] = relationship(
         back_populates="interview",
         lazy="selectin",
+        passive_deletes="all",
     )

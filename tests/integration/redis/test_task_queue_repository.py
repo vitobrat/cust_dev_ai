@@ -20,7 +20,7 @@ def _build_task(**overrides: object) -> TaskSchema:
     """Build a TaskSchema with sensible defaults, overridable by kwargs."""
     defaults: dict[str, object] = {
         "task_id": uuid.uuid4(),
-        "type": TaskType.PERSONA_GENERATION,
+        "type": TaskType.PERSONAS_GENERATION,
         "status": TaskStatus.PENDING,
         "progress": 0,
         "error_log": None,

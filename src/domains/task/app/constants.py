@@ -10,12 +10,12 @@ class TaskType(Enum):
     in the system.
 
     Attributes:
-        PERSONA_GENERATION: Task for generating user personas based on input criteria.
+        PERSONAS_GENERATION: Task for generating user personas based on input criteria.
         SUB_INTERVIEW_GENERATION: Task for generating sub-interview questions and flows.
         REPORT_GENERATION: Task for generating final interview reports.
     """
 
-    PERSONA_GENERATION = "persona_generation"
+    PERSONAS_GENERATION = "personas_generation"
     SUB_INTERVIEW_GENERATION = "sub_interview_generation"
     REPORT_GENERATION = "report_generation"
 

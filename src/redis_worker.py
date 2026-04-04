@@ -141,7 +141,7 @@ async def main() -> None:
     """Bootstrap the worker and enter the processing loop."""
     container = init_containers()
 
-    redis_task_repository: TaskQueueRepository = container.task.redis_repository()  # type: ignore[operator]
+    redis_task_repository: TaskQueueRepository = container.task.redis_task_repository()  # type: ignore[operator]
     task_service: TaskService = container.task.task_service()  # type: ignore[operator]
     task_executor_registry = build_handler_registry(container)
     stop_event = _setup_stop_event()
