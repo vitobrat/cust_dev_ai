@@ -10,6 +10,7 @@ from collections.abc import Callable
 from src.domains.task.app.constants import TaskStatus, TaskType
 from src.domains.task.db.postgres.repository import TaskRepository
 from src.infrastructure.db.postgres.client import DatabaseClient
+from src.schemas.persona import GeneratePersonasInputData
 from src.schemas.task import (
     CreateTaskSchema,
     TaskRelEntitySchema,
@@ -157,7 +158,12 @@ class TestTaskRepositoryCreate:
         """Verify that create() correctly persists input_params field."""
         # Arrange
         repo = TaskRepository(db_client)
-        input_params = {"interview_id": str(uuid.uuid4()), "persona_count": 5}
+        input_params = GeneratePersonasInputData(
+            segment_name="test_segment",
+            segment_description="test_description",
+            person_count=5,
+            interview_id=uuid.uuid4(),
+        )
         task_data = create_task_schema_factory(user_id=user.id, input_params=input_params)
 
         # Act
@@ -692,8 +698,13 @@ class TestTaskRepositoryUpdateById:
         # Arrange
         repo = TaskRepository(db_client)
         assert task.id is not None
-        new_params = {"updated": True, "retry_count": 3}
-        update_data = UpdateTaskSchema(input_params=new_params)
+        new_params = GeneratePersonasInputData(
+            segment_name="updated_segment",
+            segment_description="updated_description",
+            person_count=10,
+            interview_id=uuid.uuid4(),
+        )
+        update_data = UpdateTaskSchema(input_params=new_params.model_dump(mode="json"))
 
         # Act
         task_result = await repo.update_by_id(task.id, update_data)

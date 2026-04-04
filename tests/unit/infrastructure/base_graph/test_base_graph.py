@@ -15,7 +15,7 @@ from src.configs.consts import DEFAULT_GRAPH_RECURSION_LIMIT
 from src.infrastructure.exceptions import GraphError
 from src.infrastructure.llm.llm_adapter import LLMAdapter
 from src.infrastructure.prompt.base_prompt_manager import BasePromptManager
-from tests.schema import DummyOutputSchema, DummyStateSchema
+from tests.schema import DummyStateSchema
 from tests.unit.infrastructure.base_graph.graph_mock import BaseGraphTest
 
 
@@ -127,7 +127,7 @@ def test_recursion_limit_setter_rejects_non_integer(test_base_graph: BaseGraphTe
 
 @pytest.mark.asyncio
 async def test_process_executes_graph_successfully(test_base_graph: BaseGraphTest) -> None:
-    """Verify process method executes graph and returns validated output."""
+    """Verify process method executes graph and returns output dict."""
     input_state = DummyStateSchema(input="test input")
     expected_output = {"output": "test output"}
 
@@ -135,8 +135,7 @@ async def test_process_executes_graph_successfully(test_base_graph: BaseGraphTes
 
     graph_result = await test_base_graph.process(input_state)
 
-    assert isinstance(graph_result, DummyOutputSchema)
-    assert graph_result.output == "test output"
+    assert graph_result == expected_output
     test_base_graph.graph.ainvoke.assert_called_once()
 
 
@@ -228,16 +227,17 @@ async def test_process_raises_graph_error_when_graph_returns_none(
 
 
 @pytest.mark.asyncio
-async def test_process_raises_graph_error_on_output_validation_failure(
+async def test_process_returns_raw_output_without_validation(
     test_base_graph: BaseGraphTest,
 ) -> None:
-    """Verify process method raises GraphError when output validation fails."""
+    """Verify process returns the raw graph output dict without validation."""
     input_state = DummyStateSchema(input="test")
-    # Return invalid output that doesn't match schema
-    test_base_graph.graph.ainvoke = AsyncMock(return_value={"invalid_field": "value"})
+    raw_output = {"unexpected_field": "value"}
+    test_base_graph.graph.ainvoke = AsyncMock(return_value=raw_output)
 
-    with pytest.raises(GraphError, match="Failed to validate output for BaseGraphTest"):
-        await test_base_graph.process(input_state)
+    graph_result = await test_base_graph.process(input_state)
+
+    assert graph_result == raw_output
 
 
 @pytest.mark.asyncio

@@ -12,18 +12,24 @@ import pytest
 from src.domains.task.app.constants import TaskStatus, TaskType
 from src.domains.task.db.redis.repository import TaskQueueRepository
 from src.domains.task.exceptions import TaskQueueError
+from src.schemas.persona import GeneratePersonasInputData
 from src.schemas.task import TaskSchema
 
 
 def _build_task(**overrides: object) -> TaskSchema:
     """Build a TaskSchema with sensible defaults, overridable by kwargs."""
-    defaults = {
+    defaults: dict[str, object] = {
         "task_id": uuid.uuid4(),
         "type": TaskType.PERSONA_GENERATION,
         "status": TaskStatus.PENDING,
         "progress": 0,
         "error_log": None,
-        "input_params": {"segment": "developers"},
+        "input_params": GeneratePersonasInputData(
+            segment_name="developers",
+            segment_description="Software developers segment",
+            person_count=3,
+            interview_id=uuid.uuid4(),
+        ),
         "user_id": uuid.uuid4(),
     }
     defaults.update(overrides)
@@ -107,7 +113,6 @@ class TestTaskQueueRepositoryDequeue:
             status=TaskStatus.IN_PROGRESS,
             progress=0.5,
             error_log="partial failure",
-            input_params={"key": "value", "nested": {"a": 1}},
         )
         await task_queue_repository.enqueue(task)
 
@@ -120,7 +125,7 @@ class TestTaskQueueRepositoryDequeue:
         assert dequeued.status == TaskStatus.IN_PROGRESS
         assert str(dequeued.progress) == "0.5"
         assert dequeued.error_log == "partial failure"
-        assert dequeued.input_params == {"key": "value", "nested": {"a": 1}}
+        assert dequeued.input_params == task.input_params
 
     async def test_dequeue_returns_none_on_empty_queue(
         self,
@@ -139,9 +144,9 @@ class TestTaskQueueRepositoryDequeue:
     ) -> None:
         """Verify FIFO ordering: first enqueued task is dequeued first."""
         # Arrange
-        first_task = _build_task(input_params={"order": "first"})
-        second_task = _build_task(input_params={"order": "second"})
-        third_task = _build_task(input_params={"order": "third"})
+        first_task = _build_task()
+        second_task = _build_task()
+        third_task = _build_task()
 
         await task_queue_repository.enqueue(first_task)
         await task_queue_repository.enqueue(second_task)

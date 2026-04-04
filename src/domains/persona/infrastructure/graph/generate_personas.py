@@ -18,12 +18,16 @@ from src.domains.persona.infrastructure.prompt.prompt_manager import (
 from src.domains.persona.schemas.generate_persona import (
     BaseInputData,
     GeneratePersonaSchema,
+    GeneratePersonasInputSchema,
+    GeneratePersonasOutputSchema,
     GeneratePersonasSchema,
 )
 from src.infrastructure.graph.base_graph import BaseGraph
 
 
-class GeneratePersonasGraph(BaseGraph):
+class GeneratePersonasGraph(
+    BaseGraph[GeneratePersonasInputSchema, GeneratePersonasSchema, GeneratePersonasOutputSchema],
+):
 
     _prompt_builder: PersonaPromptManager
 

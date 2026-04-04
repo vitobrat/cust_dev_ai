@@ -15,6 +15,10 @@ from src.domains.persona.infrastructure.graph.generate_personas import (
 from src.domains.persona.infrastructure.graph.user_segment_search import (
     UserSegmentSearchGraph,
 )
+from src.domains.persona.schemas.generate_persona.state_schemas import (
+    GeneratePersonasInputSchema,
+    GeneratePersonasOutputSchema,
+)
 from src.schemas.persona import (
     CreatePersonaSchema,
     PersonaRelEntitySchema,
@@ -43,6 +47,34 @@ class PersonaService:
         self._generate_personas_graph = generate_personas_graph
         self._user_segment_search_graph = user_segment_search_graph
         self._personas_repository = personas_repository
+
+    async def generate_persona(
+        self,
+        interview_id: uuid.UUID,
+        generate_persona_state: GeneratePersonasInputSchema,
+    ) -> None:
+        """Generate personas via LangGraph and persist them.
+
+        Runs the generation graph, then saves each resulting persona
+        linked to the given interview.
+
+        Args:
+            interview_id: Interview to associate generated personas with.
+            generate_persona_state: Input state for the generation graph.
+        """
+        generate_personas_response: GeneratePersonasOutputSchema = await self._generate_personas_graph.process(
+            generate_persona_state,
+        )
+
+        for persona in generate_personas_response["personas"]:
+            await self._personas_repository.create(
+                CreatePersonaSchema(
+                    interview_id=interview_id,
+                    demographic_state=persona.demographic_attributes,
+                    bio_description=persona.biography,
+                    is_verified=False,
+                ),
+            )
 
     async def create_persona(self, create_persona_data: CreatePersonaSchema) -> PersonaRelEntitySchema:
         """Persist a new persona entity.

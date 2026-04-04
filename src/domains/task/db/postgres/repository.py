@@ -46,7 +46,7 @@ class TaskRepository(BaseCRUDRepository[TasksOrm, CreateTaskSchema, UpdateTaskSc
                 status=create_data.status,
                 progress=create_data.progress,
                 error_log=create_data.error_log,
-                input_params=create_data.input_params,
+                input_params=create_data.input_params.model_dump(mode="json"),
                 user_id=create_data.user_id,
             )
             session.add(task)

@@ -20,7 +20,13 @@ class BaseRedisRepository:
 
     def __init__(self, redis_client: RedisClient) -> None:
         self._logger = get_logger(f"{__name__}.{self.__class__.__name__}")
-        self._redis: Redis[str] = redis_client.client
+        self._redis_client: RedisClient = redis_client
+        self._redis: Redis[str] = self._redis_client.client
+
+    @property
+    def redis_client(self) -> RedisClient:
+        """Return the underlying ``RedisClient`` instance."""
+        return self._redis_client
 
     async def delete(self, redis_key: str) -> None:
         """Delete a key. No-op if the key does not exist."""

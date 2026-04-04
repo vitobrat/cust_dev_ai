@@ -28,19 +28,29 @@ class PersonaSchema(BaseModel):
     experiences: CleanStr = ""
 
 
-class GeneratePersonaSchema(TypedDict):
-    """State schema for single persona generation workflow."""
+class GeneratePersonaInputSchema(TypedDict):
+    """Input state accepted by ``GenerateSinglePersonaGraph``."""
 
     input_data: BaseInputData
+
+
+class GeneratePersonaSchema(GeneratePersonaInputSchema):
+    """State schema for single persona generation workflow."""
+
     demographic_attributes: Optional[DemographicAttributePersona]
     biography: Optional[str]
     experiences: Optional[str]
 
 
-class GeneratePersonasSchema(TypedDict):
-    """State schema for multiple personas generation workflow."""
+class GeneratePersonasInputSchema(TypedDict):
+    """Input state accepted by ``GeneratePersonasGraph``."""
 
     input_data: InputData
+
+
+class GeneratePersonasSchema(GeneratePersonasInputSchema):
+    """State schema for multiple personas generation workflow."""
+
     personas: Annotated[List[PersonaSchema], operator.add]
 
 

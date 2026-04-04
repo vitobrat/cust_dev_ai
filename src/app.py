@@ -21,9 +21,9 @@ from src.domains.sub_interview.app.requests.router import (
 from src.domains.task.app.requests.router import router as task_router
 from src.domains.user.app.requests.router import router as user_router
 from src.infrastructure.containers.domain import DomainContainer
-from src.infrastructure.rabbitmq.client import RabbitMQClient
 from src.infrastructure.db.postgres.client import DatabaseClient
 from src.infrastructure.db.redis.client import RedisClient
+from src.infrastructure.rabbitmq.client import RabbitMQClient
 
 settings = AppConfigs.init()
 
@@ -40,9 +40,9 @@ def init_containers() -> DomainContainer:
 
 
 async def _shutdown(
-  rabbitmq_client: RabbitMQClient, 
-  redis: RedisClient, 
-  postgres: DatabaseClient
+    rabbitmq_client: RabbitMQClient,
+    redis: RedisClient,
+    postgres: DatabaseClient,
 ) -> None:
     """Close all external service connections gracefully.
 
@@ -75,7 +75,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     container = init_containers()
     app.state.container = container
 
-    rabbitmq_client = container.infrastructure.rabbitmq_client()  # type: ignore[operator]
+    rabbitmq_client = container.infrastructure.rabbitmq_client()
     redis = container.infrastructure.redis_client()  # type: ignore[operator]
     postgres = container.infrastructure.db_client()  # type: ignore[operator]
 
