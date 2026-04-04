@@ -53,8 +53,9 @@ class InfrastructureContainer(containers.DeclarativeContainer):
             vhost=config.rabbitmq.vhost,
             user=config.rabbitmq.user,
             password=config.rabbitmq.password,
-    ),
-      
+        ),
+    )
+
     redis_client: RedisClient = providers.Singleton(
         RedisClient,
         redis_url=config.redis.redis_url,

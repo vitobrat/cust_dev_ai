@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from langfuse.langchain import CallbackHandler
 from langgraph.graph import END, START
 from langgraph.graph.state import CompiledStateGraph
@@ -11,7 +13,7 @@ from src.infrastructure.llm.llm_adapter import LLMAdapter
 from src.infrastructure.prompt.base_prompt_manager import BasePromptManager
 
 
-class BaseGraphTest(BaseGraph):
+class BaseGraphTest(BaseGraph[Any, Any, Any]):
     """Minimal graph implementation used for BaseGraph unit tests."""
 
     _compiled_graph: CompiledStateGraph

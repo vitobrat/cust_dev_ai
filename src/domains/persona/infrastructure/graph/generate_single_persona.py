@@ -13,6 +13,7 @@ from src.domains.persona.infrastructure.prompt.prompt_manager import (
 )
 from src.domains.persona.schemas.generate_persona import (
     DemographicAttributePersona,
+    GeneratePersonaInputSchema,
     GeneratePersonaSchema,
     GeneratePersonasOutputSchema,
     PersonaSchema,
@@ -20,7 +21,9 @@ from src.domains.persona.schemas.generate_persona import (
 from src.infrastructure.graph.base_graph import BaseGraph
 
 
-class GenerateSinglePersonaGraph(BaseGraph):
+class GenerateSinglePersonaGraph(
+    BaseGraph[GeneratePersonaInputSchema, GeneratePersonaSchema, GeneratePersonasOutputSchema],
+):
 
     _prompt_builder: PersonaPromptManager
 

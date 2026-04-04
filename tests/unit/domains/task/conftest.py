@@ -11,6 +11,7 @@ import pytest
 from src.domains.task.app.constants import TaskStatus, TaskType
 from src.domains.task.db.redis.repository import TaskQueueRepository
 from src.infrastructure.db.redis.client import RedisClient
+from src.schemas.persona import GeneratePersonasInputData
 from src.schemas.task import TaskSchema
 
 
@@ -38,6 +39,11 @@ def sample_task() -> TaskSchema:
         status=TaskStatus.PENDING,
         progress=0,
         error_log=None,
-        input_params={"segment": "developers"},
+        input_params=GeneratePersonasInputData(
+            segment_name="developers",
+            segment_description="Software developers segment",
+            person_count=3,
+            interview_id=uuid.uuid4(),
+        ),
         user_id=uuid.uuid4(),
     )

@@ -60,14 +60,19 @@ class VerificationSegmentOutput(BaseModel):
     )
 
 
-class UserSegmentSearchSchema(BaseModel):
+class UserSegmentSearchInputSchema(BaseModel):
+    """Input schema accepted by ``UserSegmentSearchGraph``."""
+
+    input_data: InputData
+
+
+class UserSegmentSearchSchema(UserSegmentSearchInputSchema):
     """State schema describing the running user segment search execution."""
 
     segments_history: list[UserSegment] = Field(
         default_factory=list,
         description="Previously found user segments",
     )
-    input_data: InputData
     analysis_result: Optional[str] = Field(
         None,
         description="The result of analysing the user prompt for finding user segments",

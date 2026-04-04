@@ -14,7 +14,9 @@ from src.domains.persona.schemas.generate_persona.persona_blocks import (
     SocialBlock,
 )
 from src.domains.persona.schemas.generate_persona.state_schemas import (
+    GeneratePersonaInputSchema,
     GeneratePersonaSchema,
+    GeneratePersonasInputSchema,
     GeneratePersonasOutputSchema,
     GeneratePersonasSchema,
     PersonaSchema,
@@ -23,7 +25,9 @@ from src.domains.persona.schemas.generate_persona.state_schemas import (
 __all__ = [  # noqa: WPS410
     "BaseInputData",
     "DemographicAttributePersona",
+    "GeneratePersonaInputSchema",
     "GeneratePersonaSchema",
+    "GeneratePersonasInputSchema",
     "GeneratePersonasOutputSchema",
     "GeneratePersonasSchema",
     "InputData",

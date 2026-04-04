@@ -11,6 +11,7 @@ from src.domains.persona.infrastructure.prompt.prompt_manager import (
 from src.domains.persona.schemas.user_segment_search import (
     FindUserSegmentOutput,
     UserSegment,
+    UserSegmentSearchInputSchema,
     UserSegmentSearchOutputSchema,
     UserSegmentSearchSchema,
     VerificationSegmentOutput,
@@ -18,7 +19,9 @@ from src.domains.persona.schemas.user_segment_search import (
 from src.infrastructure.graph.base_graph import BaseGraph
 
 
-class UserSegmentSearchGraph(BaseGraph):
+class UserSegmentSearchGraph(
+    BaseGraph[UserSegmentSearchInputSchema, UserSegmentSearchSchema, UserSegmentSearchOutputSchema],
+):
     """
     Graph responsible for searching user segments based on a user prompt.
     The graph consists of the following steps:

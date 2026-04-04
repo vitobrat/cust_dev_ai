@@ -5,7 +5,7 @@ with standardized configuration, error handling, and execution patterns.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Generic, Optional, TypeVar
 
 from langfuse.langchain import CallbackHandler
 from langgraph.graph import StateGraph
@@ -16,10 +16,13 @@ from src.configs.log.logger import get_logger
 from src.infrastructure.exceptions import GraphError
 from src.infrastructure.llm.llm_adapter import LLMAdapter
 from src.infrastructure.prompt.base_prompt_manager import BasePromptManager
-from src.schemas.base import Schema
+
+InputState = TypeVar("InputState")
+State = TypeVar("State")
+OutputState = TypeVar("OutputState")
 
 
-class BaseGraph(StateGraph, ABC):
+class BaseGraph(StateGraph, ABC, Generic[InputState, State, OutputState]):
     """Abstract base class for LangGraph-based agents.
 
     This class provides a standardized way to build, configure, and execute
@@ -48,10 +51,10 @@ class BaseGraph(StateGraph, ABC):
 
     def __init__(
         self,
-        state_schema: Schema,
+        state_schema: type[State],
         llm_adapter: LLMAdapter,
         prompt_builder: BasePromptManager,
-        output_schema: Optional[Schema] = None,
+        output_schema: Optional[type[OutputState]] = None,
         recursion_limit: int = DEFAULT_GRAPH_RECURSION_LIMIT,
         langfuse_handler: Optional[CallbackHandler] = None,
     ) -> None:
@@ -70,7 +73,7 @@ class BaseGraph(StateGraph, ABC):
             )
             self._recursion_limit = DEFAULT_GRAPH_RECURSION_LIMIT
 
-        self.output_schema: Schema = output_schema
+        self.output_schema: Optional[type[OutputState]] = output_schema
         self.graph: CompiledStateGraph = self._build_graph()
 
     @property
@@ -88,18 +91,18 @@ class BaseGraph(StateGraph, ABC):
 
     async def process(
         self,
-        state: Schema,
-    ) -> Schema:
-        """Execute the graph with the given state.
+        input_state: InputState,
+    ) -> OutputState:
+        """Execute the graph with the given input state.
 
         Args:
-            state: Initial state dictionary conforming to the state schema.
+            input_state: Initial state dictionary conforming to the input schema.
 
         Returns:
-            Output instance conforming to the output schema.
+            Graph output conforming to the output schema.
 
         Raises:
-            GraphError: If the graph execution fails or returns None.
+            GraphError: If graph execution fails or returns ``None``.
         """
         graph_process_configs: Dict[str, Any] = {
             "recursion_limit": self._recursion_limit,
@@ -109,7 +112,7 @@ class BaseGraph(StateGraph, ABC):
 
         try:
             graph_result = await self.graph.ainvoke(
-                state,
+                input_state,
                 config=graph_process_configs,
             )
         except Exception as exc:
@@ -122,12 +125,7 @@ class BaseGraph(StateGraph, ABC):
                 f"Graph {self.__class__.__name__} returned None response",
             )
 
-        try:
-            return self.output_schema(**graph_result)
-        except Exception as exc:
-            raise GraphError(
-                f"Failed to validate output for {self.__class__.__name__}: {exc}",
-            ) from exc
+        return graph_result
 
     def _build_graph(self) -> CompiledStateGraph:
         """Build and compile the graph.

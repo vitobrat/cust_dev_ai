@@ -12,6 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from src.domains.task.app.constants import TaskStatus, TaskType
 from src.schemas.api_base import VerboseBase
+from src.schemas.persona import GeneratePersonasInputData
 
 if TYPE_CHECKING:
     from src.schemas.user import UserEntitySchema
@@ -33,7 +34,7 @@ class CreateTaskSchema(BaseModel):
     status: TaskStatus = TaskStatus.PENDING
     progress: float = Field(default=0, ge=0, le=1.0)
     error_log: Optional[str] = None
-    input_params: dict[str, Any]
+    input_params: GeneratePersonasInputData
     user_id: uuid.UUID
 
 

@@ -11,8 +11,12 @@ from dependency_injector import containers, providers
 
 from src.configs.config import AppConfigs
 from src.domains.interview.app.usecases.service import InterviewService
+from src.domains.interview.app.workers.handler import (
+    ReportGenerationTaskHandler,
+)
 from src.domains.interview.db.postgres.repository import InterviewRepository
 from src.domains.persona.app.usecases.service import PersonaService
+from src.domains.persona.app.workers.handler import PersonaGenerationTaskHandler
 from src.domains.persona.db.postgres.repository import PersonaRepository
 from src.domains.persona.infrastructure.graph.generate_personas import (
     GeneratePersonasGraph,
@@ -27,11 +31,15 @@ from src.domains.persona.infrastructure.prompt.prompt_manager import (
     PersonaPromptManager,
 )
 from src.domains.sub_interview.app.usecases.service import SubInterviewService
+from src.domains.sub_interview.app.workers.handler import (
+    SubInterviewGenerationTaskHandler,
+)
 from src.domains.sub_interview.db.postgres.repository import (
     SubInterviewRepository,
 )
 from src.domains.task.app.usecases.service import TaskService
 from src.domains.task.db.postgres.repository import TaskRepository
+from src.domains.task.db.redis.repository import TaskQueueRepository
 from src.domains.user.app.usecases.service import UserService
 from src.domains.user.db.postgres.repository import UserRepository
 from src.infrastructure.containers.infrastructure import InfrastructureContainer
@@ -97,6 +105,11 @@ class PersonaContainer(containers.DeclarativeContainer):
         personas_repository=personas_repository,
     )
 
+    persona_generation_handler: PersonaGenerationTaskHandler = providers.Singleton(
+        PersonaGenerationTaskHandler,
+        persona_service=persona_service,
+    )
+
 
 class InterviewContainer(containers.DeclarativeContainer):
     """Dependency injection container for Interview domain components.
@@ -120,6 +133,11 @@ class InterviewContainer(containers.DeclarativeContainer):
     interview_service: InterviewService = providers.Factory(
         InterviewService,
         interviews_repository=interviews_repository,
+    )
+
+    report_generation_handler: ReportGenerationTaskHandler = providers.Singleton(
+        ReportGenerationTaskHandler,
+        interview_service=interview_service,
     )
 
 
@@ -146,6 +164,11 @@ class SubInterviewContainer(containers.DeclarativeContainer):
         sub_interviews_repository=sub_interviews_repository,
     )
 
+    sub_interview_generation_handler: SubInterviewGenerationTaskHandler = providers.Singleton(
+        SubInterviewGenerationTaskHandler,
+        sub_interview_service=sub_interview_service,
+    )
+
 
 class TaskContainer(containers.DeclarativeContainer):
     """Dependency injection container for Task domain components.
@@ -163,6 +186,11 @@ class TaskContainer(containers.DeclarativeContainer):
     tasks_repository: TaskRepository = providers.Factory(
         TaskRepository,
         db_client=infrastructure.db_client,
+    )
+
+    redis_repository: TaskQueueRepository = providers.Singleton(
+        TaskQueueRepository,
+        redis_client=infrastructure.redis_client,
     )
 
     task_service: TaskService = providers.Factory(

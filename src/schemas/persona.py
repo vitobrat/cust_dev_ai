@@ -14,10 +14,24 @@ from pydantic import BaseModel, ConfigDict, Field
 from src.domains.persona.schemas.generate_persona.demographic_persona import (
     DemographicAttributePersona,
 )
+from src.domains.persona.schemas.generate_persona.input_data import InputData
 from src.schemas.api_base import VerboseBase
 
 if TYPE_CHECKING:
     from src.schemas.interview import InterviewEntitySchema
+
+
+class GeneratePersonasInputData(InputData):
+    """Task input parameters for persona generation.
+
+    Extends ``InputData`` with the interview reference so the worker
+    knows which interview the generated personas belong to.
+
+    Attributes:
+        interview_id: UUID of the interview that triggered generation.
+    """
+
+    interview_id: uuid.UUID
 
 
 class CreatePersonaSchema(BaseModel):
