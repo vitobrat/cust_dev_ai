@@ -1,4 +1,5 @@
-from typing import Optional
+import operator
+from typing import Annotated, Optional, TypedDict
 
 from pydantic import BaseModel, Field
 
@@ -60,30 +61,32 @@ class VerificationSegmentOutput(BaseModel):
     )
 
 
-class UserSegmentSearchInputSchema(BaseModel):
+class UserSegmentSearchInputData(InputData):
     """Input schema accepted by ``UserSegmentSearchGraph``."""
 
-    input_data: InputData
+
+class UserSegmentSearchSchema(TypedDict, total=False):
+    """State schema describing the running user segment search execution.
+
+    All keys are ``total=False`` because LangGraph nodes return partial
+    state updates.  At runtime LangGraph guarantees that ``input_data``
+    is present after graph invocation.
+    """
+
+    input_data: UserSegmentSearchInputData
+    segments_history: Annotated[list[UserSegment], operator.add]
+    analysis_result: Optional[str]
+    verification_result: Optional[VerificationSegmentOutput]
 
 
-class UserSegmentSearchSchema(UserSegmentSearchInputSchema):
-    """State schema describing the running user segment search execution."""
+class UserSegmentSearchOutputSchema(TypedDict):
+    """Final output schema returned in final graph node."""
 
-    segments_history: list[UserSegment] = Field(
-        default_factory=list,
-        description="Previously found user segments",
-    )
-    analysis_result: Optional[str] = Field(
-        None,
-        description="The result of analysing the user prompt for finding user segments",
-    )
-    verification_result: Optional[VerificationSegmentOutput] = Field(
-        None,
-        description="Results produced by the verification step",
-    )
+    segment_name: str
+    segment_description: str
 
 
-class UserSegmentSearchOutputSchema(BaseModel):
+class UserSegmentSearchOutputData(BaseModel):
     """Final output returned when the graph completes."""
 
     segment_name: str = Field(..., description="Name of the user segment found")

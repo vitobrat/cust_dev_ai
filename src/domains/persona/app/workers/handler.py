@@ -2,9 +2,8 @@
 
 from src.configs.log.logger import get_logger
 from src.domains.persona.app.usecases.service import PersonaService
-from src.domains.persona.schemas.generate_persona.input_data import InputData
 from src.domains.persona.schemas.generate_persona.state_schemas import (
-    GeneratePersonasInputSchema,
+    GeneratePersonasInputData as GraphInputData,
 )
 from src.schemas.persona import GeneratePersonasInputData
 from src.schemas.task import TaskSchema
@@ -42,11 +41,9 @@ class PersonaGenerationTaskHandler:
 
         await self._persona_service.generate_persona(
             interview_id=input_params.interview_id,
-            generate_persona_state=GeneratePersonasInputSchema(
-                input_data=InputData(
-                    segment_name=input_params.segment_name,
-                    segment_description=input_params.segment_description,
-                    person_count=input_params.person_count,
-                ),
+            generate_persona_input=GraphInputData(
+                segment_name=input_params.segment_name,
+                segment_description=input_params.segment_description,
+                person_count=input_params.person_count,
             ),
         )

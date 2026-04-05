@@ -58,7 +58,7 @@ def fixture_structured_prompts(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def mock_base_graph() -> BaseGraph[Any, Any, Any]:
+def mock_base_graph() -> BaseGraph[Any, Any, Any, Any]:
     """Provide a fresh compiled graph stub for each test."""
     compiled_graph = MagicMock(spec=BaseGraph)
     compiled_graph.ainvoke = AsyncMock()

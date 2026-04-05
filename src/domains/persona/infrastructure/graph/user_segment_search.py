@@ -3,7 +3,11 @@ from typing import Any, Literal
 from langgraph.graph import END, START
 
 from src.domains.persona.infrastructure.graph.graph_utils import (
+    get_analysis_result,
     get_last_segment,
+    get_previous_segments,
+    get_user_prompt,
+    get_verification_result_is_valid,
 )
 from src.domains.persona.infrastructure.prompt.prompt_manager import (
     PersonaPromptManager,
@@ -11,7 +15,8 @@ from src.domains.persona.infrastructure.prompt.prompt_manager import (
 from src.domains.persona.schemas.user_segment_search import (
     FindUserSegmentOutput,
     UserSegment,
-    UserSegmentSearchInputSchema,
+    UserSegmentSearchInputData,
+    UserSegmentSearchOutputData,
     UserSegmentSearchOutputSchema,
     UserSegmentSearchSchema,
     VerificationSegmentOutput,
@@ -20,7 +25,12 @@ from src.infrastructure.graph.base_graph import BaseGraph
 
 
 class UserSegmentSearchGraph(
-    BaseGraph[UserSegmentSearchInputSchema, UserSegmentSearchSchema, UserSegmentSearchOutputSchema],
+    BaseGraph[
+        UserSegmentSearchInputData,
+        UserSegmentSearchSchema,
+        UserSegmentSearchOutputSchema,
+        UserSegmentSearchOutputData,
+    ],
 ):
     """
     Graph responsible for searching user segments based on a user prompt.
@@ -38,6 +48,7 @@ class UserSegmentSearchGraph(
         super().__init__(
             state_schema=UserSegmentSearchSchema,
             output_schema=UserSegmentSearchOutputSchema,
+            output_data_model=UserSegmentSearchOutputData,
             **kwargs,
         )
 
@@ -62,28 +73,30 @@ class UserSegmentSearchGraph(
         state: UserSegmentSearchSchema,
     ) -> Literal["analyse_user_prompt", "output"]:
         """Check if the verification result is valid."""
-        if state.verification_result and state.verification_result.is_valid:
+
+        if get_verification_result_is_valid(state):
             return "output"
         else:
             return "analyse_user_prompt"
 
     async def _analyse_user_prompt(self, state: UserSegmentSearchSchema) -> UserSegmentSearchSchema:
         """Analyse the user prompt to find relevant user segments."""
+
         prompt = self._prompt_builder.build_analyse_user_prompt(
-            user_prompt=state.input_data.user_prompt,
-            previous_segments=";\n".join([segment.segment_info for segment in state.segments_history]),
+            user_prompt=get_user_prompt(state),
+            previous_segments=get_previous_segments(state),
         )
 
-        response: str = await self._llm_adapter.ainvoke(prompt)
+        analyse_user_prompt: str = await self._llm_adapter.ainvoke(prompt)
 
-        state.analysis_result = response
-        return state
+        return {"analysis_result": analyse_user_prompt}
 
     async def _find_user_segment(self, state: UserSegmentSearchSchema) -> UserSegmentSearchSchema:
         """Find user segments based on the analysed user prompt."""
+
         prompt = self._prompt_builder.build_find_user_segment_prompt(
-            user_prompt=state.input_data.user_prompt,
-            analysis_result=state.analysis_result,
+            user_prompt=get_user_prompt(state),
+            analysis_result=get_analysis_result(state),
         )
 
         structured_response: FindUserSegmentOutput = await self._llm_adapter.structured_ainvoke(
@@ -91,8 +104,7 @@ class UserSegmentSearchGraph(
             FindUserSegmentOutput,
         )
 
-        state.segments_history.append(UserSegment.from_find_output(structured_response))
-        return state
+        return {"segments_history": state["segments_history"] + [UserSegment.from_find_output(structured_response)]}
 
     async def _verify_user_segment(self, state: UserSegmentSearchSchema) -> UserSegmentSearchSchema:
         """Verify the found user segments to ensure they are relevant and accurate."""
@@ -110,14 +122,15 @@ class UserSegmentSearchGraph(
             VerificationSegmentOutput,
         )
 
-        state.verification_result = structured_response
-        return state
+        return {
+            "verification_result": structured_response,
+        }
 
     async def _output_node(self, state: UserSegmentSearchSchema) -> UserSegmentSearchOutputSchema:
         """Output the final user segment search results."""
         last_segment: UserSegment = get_last_segment(state)
 
-        return UserSegmentSearchOutputSchema(
-            segment_name=last_segment.segment_name,
-            segment_description=last_segment.segment_description,
-        )
+        return {
+            "segment_name": last_segment.segment_name,
+            "segment_description": last_segment.segment_description,
+        }

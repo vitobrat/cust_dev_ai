@@ -3,8 +3,10 @@ from typing import Callable
 import pytest
 
 from src.domains.persona.schemas.base import GeographicalLocation
-from src.domains.persona.schemas.generate_persona import (
+from src.domains.persona.schemas.generate_persona.demographic_persona import (
     DemographicAttributePersona,
+)
+from src.domains.persona.schemas.generate_persona.persona_blocks import (
     SocialBlock,
 )
 from tests.unit.domains.persona.persona_test_utils import assert_section_present

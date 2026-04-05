@@ -8,9 +8,13 @@ from langchain_core.messages import SystemMessage
 from src.domains.persona.infrastructure.graph.generate_single_persona import (
     GenerateSinglePersonaGraph,
 )
-from src.domains.persona.schemas.generate_persona import (
-    BaseInputData,
+from src.domains.persona.schemas.generate_persona.demographic_persona import (
     DemographicAttributePersona,
+)
+from src.domains.persona.schemas.generate_persona.input_data import (
+    BaseInputData,
+)
+from src.domains.persona.schemas.generate_persona.state_schemas import (
     GeneratePersonaSchema,
     PersonaSchema,
 )

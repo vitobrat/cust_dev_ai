@@ -8,8 +8,10 @@ from langgraph.types import Send
 from src.domains.persona.infrastructure.graph.generate_personas import (
     GeneratePersonasGraph,
 )
-from src.domains.persona.schemas.generate_persona import (
+from src.domains.persona.schemas.generate_persona.input_data import (
     BaseInputData,
+)
+from src.domains.persona.schemas.generate_persona.state_schemas import (
     GeneratePersonasSchema,
 )
 

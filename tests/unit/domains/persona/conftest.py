@@ -11,24 +11,28 @@ from src.domains.persona.infrastructure.prompt.prompt_manager import (
     PersonaPromptManager,
 )
 from src.domains.persona.schemas.base import Gender, GeographicalLocation
-from src.domains.persona.schemas.generate_persona import (
-    BaseInputData,
+from src.domains.persona.schemas.generate_persona.demographic_persona import (
     DemographicAttributePersona,
-    GeneratePersonaSchema,
-    GeneratePersonasSchema,
 )
-from src.domains.persona.schemas.generate_persona import (
+from src.domains.persona.schemas.generate_persona.input_data import (
+    BaseInputData,
+)
+from src.domains.persona.schemas.generate_persona.input_data import (
     InputData as GeneratePersonasInputData,
 )
-from src.domains.persona.schemas.generate_persona import (
+from src.domains.persona.schemas.generate_persona.persona_blocks import (
     PersonalInfoBlock,
     ProblemBlock,
     PsychographicBehaviorBlock,
     SocialBlock,
 )
+from src.domains.persona.schemas.generate_persona.state_schemas import (
+    GeneratePersonaSchema,
+    GeneratePersonasSchema,
+)
 from src.domains.persona.schemas.user_segment_search import (
-    InputData,
     UserSegment,
+    UserSegmentSearchInputData,
     UserSegmentSearchSchema,
     VerificationSegmentOutput,
 )
@@ -39,8 +43,10 @@ from src.infrastructure.llm.llm_adapter import LLMAdapter
 @pytest.fixture
 def user_segment_search_state() -> UserSegmentSearchSchema:
     return UserSegmentSearchSchema(
-        input_data=InputData(user_prompt="user prompt"),
+        input_data=UserSegmentSearchInputData(user_prompt="user prompt"),
+        segments_history=[],
         analysis_result="analysis payload",
+        verification_result=None,
     )
 
 
@@ -93,28 +99,25 @@ def mock_persona_prompt_builder() -> PersonaPromptManager:
 def prompt_payloads() -> dict[str, dict[str, str]]:
     return {
         "user_segment_search": {
-            "analyse_user_prompt.md": "Analyse command: {user_prompt} :: {previous_segments}",
-            "find_user_segment.md": ("Find request: {user_prompt} -> {analysis_result}; example {output_example}"),
-            "find_user_segment_output_example.md": "Find output example",
-            "verify_user_segment.md": (
+            "analyse_user_prompt": "Analyse command: {user_prompt} :: {previous_segments}",
+            "find_user_segment": "Find request: {user_prompt} -> {analysis_result}; example {output_example}",
+            "find_user_segment_output_example": "Find output example",
+            "verify_user_segment": (
                 "Verify segment {segment_name} described as {segment_description}."
                 " Unified problem {unifying_problem_segment}, find at {where_to_find_segment}."
                 " Output sample {output_example}"
             ),
-            "verify_user_segment_output_example.md": "Verify output example",
-        },
-        "demographic_attribute_person": {
-            "generate_persona.md": (
-                "Generate persona for {segment_name} ({segment_description})." " Sample output {output_example}"
-            ),
+            "verify_user_segment_output_example": "Verify output example",
         },
         "generate_persona": {
-            "generate_persona_output_example.md": "Persona generation output sample",
-            "generate_persona_biography.md": "Biography narrative: {demographic_attributes}, "
-            "Segment description: {segment_description}",
-            "generate_persona_experiences.md": (
-                "Experiences narrative: {demographic_attributes}, {segment_description}"
+            "generate_single_persona": (
+                "Generate json persona for {segment_name} ({segment_description})." " Sample output {output_example}"
             ),
+            "generate_single_persona_output_example": "Persona generation output sample",
+            "generate_persona_biography": (
+                "Biography narrative: {demographic_attributes}, " "Segment description: {segment_description}"
+            ),
+            "generate_persona_experiences": ("Experiences narrative: {demographic_attributes}, {segment_description}"),
         },
     }
 
@@ -127,7 +130,7 @@ def fixture_persona_prompt_manager(
     """Provide a PersonaPromptManager with controlled templates for prompt builders."""
 
     prompts_root = tmp_path / "prompts"
-    for directory in ("user_segment_search", "demographic_attribute_person", "generate_persona"):
+    for directory in ("user_segment_search", "generate_persona"):
         (prompts_root / directory).mkdir(parents=True, exist_ok=True)
 
     manager = PersonaPromptManager(prompts_root)

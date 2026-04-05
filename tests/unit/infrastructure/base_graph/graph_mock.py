@@ -13,7 +13,7 @@ from src.infrastructure.llm.llm_adapter import LLMAdapter
 from src.infrastructure.prompt.base_prompt_manager import BasePromptManager
 
 
-class BaseGraphTest(BaseGraph[Any, Any, Any]):
+class BaseGraphTest(BaseGraph[Any, Any, Any, Any]):
     """Minimal graph implementation used for BaseGraph unit tests."""
 
     _compiled_graph: CompiledStateGraph
@@ -25,6 +25,7 @@ class BaseGraphTest(BaseGraph[Any, Any, Any]):
         output_schema: type[BaseModel],
         llm_adapter: LLMAdapter,
         prompt_builder: BasePromptManager,
+        output_data_model: type[BaseModel] | None = None,
         recursion_limit: int = DEFAULT_GRAPH_RECURSION_LIMIT,
         langfuse_handler: CallbackHandler | None = None,
     ) -> None:
@@ -33,6 +34,7 @@ class BaseGraphTest(BaseGraph[Any, Any, Any]):
         super().__init__(
             state_schema=state_schema,
             output_schema=output_schema,
+            output_data_model=output_data_model or output_schema,
             llm_adapter=llm_adapter,
             prompt_builder=prompt_builder,
             recursion_limit=recursion_limit,

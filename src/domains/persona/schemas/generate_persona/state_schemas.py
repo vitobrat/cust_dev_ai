@@ -28,29 +28,36 @@ class PersonaSchema(BaseModel):
     experiences: CleanStr = ""
 
 
-class GeneratePersonaInputSchema(TypedDict):
-    """Input state accepted by ``GenerateSinglePersonaGraph``."""
-
-    input_data: BaseInputData
+class GeneratePersonaInputData(BaseInputData):
+    """Input data accepted by ``GenerateSinglePersonaGraph``."""
 
 
-class GeneratePersonaSchema(GeneratePersonaInputSchema):
-    """State schema for single persona generation workflow."""
+class GeneratePersonaSchema(TypedDict, total=False):
+    """State schema for single persona generation workflow.
 
+    All keys are ``total=False`` because LangGraph nodes return partial
+    state updates.  At runtime LangGraph populates ``input_data`` during
+    graph invocation.
+    """
+
+    input_data: GeneratePersonaInputData
     demographic_attributes: Optional[DemographicAttributePersona]
     biography: Optional[str]
     experiences: Optional[str]
 
 
-class GeneratePersonasInputSchema(TypedDict):
-    """Input state accepted by ``GeneratePersonasGraph``."""
-
-    input_data: InputData
+class GeneratePersonasInputData(InputData):
+    """Input data accepted by ``GeneratePersonasGraph``."""
 
 
-class GeneratePersonasSchema(GeneratePersonasInputSchema):
-    """State schema for multiple personas generation workflow."""
+class GeneratePersonasSchema(TypedDict, total=False):
+    """State schema for multiple personas generation workflow.
 
+    All keys are ``total=False`` because LangGraph nodes return partial
+    state updates.
+    """
+
+    input_data: GeneratePersonasInputData
     personas: Annotated[List[PersonaSchema], operator.add]
 
 
@@ -58,3 +65,9 @@ class GeneratePersonasOutputSchema(TypedDict):
     """Output schema for multiple personas generation."""
 
     personas: Annotated[List[PersonaSchema], operator.add]
+
+
+class GeneratePersonasOutputData(BaseModel):
+    """Output data for multiple personas generation."""
+
+    personas: List[PersonaSchema]

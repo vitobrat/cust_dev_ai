@@ -5,11 +5,12 @@ with standardized configuration, error handling, and execution patterns.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Generic, Optional, TypeVar
+from typing import Generic, Optional, TypeVar
 
 from langfuse.langchain import CallbackHandler
 from langgraph.graph import StateGraph
-from langgraph.graph.state import CompiledStateGraph
+from langgraph.graph.state import CompiledStateGraph, RunnableConfig
+from pydantic import BaseModel, ValidationError
 
 from src.configs.consts import DEFAULT_GRAPH_RECURSION_LIMIT
 from src.configs.log.logger import get_logger
@@ -17,36 +18,40 @@ from src.infrastructure.exceptions import GraphError
 from src.infrastructure.llm.llm_adapter import LLMAdapter
 from src.infrastructure.prompt.base_prompt_manager import BasePromptManager
 
-InputState = TypeVar("InputState")
+InputData = TypeVar("InputData", bound=BaseModel)
 State = TypeVar("State")
 OutputState = TypeVar("OutputState")
+OutputData = TypeVar("OutputData", bound=BaseModel)
 
 
-class BaseGraph(StateGraph, ABC, Generic[InputState, State, OutputState]):
+class BaseGraph(StateGraph, ABC, Generic[InputData, State, OutputState, OutputData]):
     """Abstract base class for LangGraph-based agents.
 
-    This class provides a standardized way to build, configure, and execute
-    LangGraph state machines with integrated LLM adapters, prompt management,
-    and observability through Langfuse.
+    Provides a standardized way to build, configure, and execute LangGraph
+    state machines with integrated LLM adapters, prompt management, and
+    observability through Langfuse.
 
-    Subclasses must implement :meth:`_configurate_graph` to define the graph
-    structure (nodes and edges).
+    The class is parameterized with four type variables:
+
+    * ``InputData`` — Pydantic ``BaseModel`` validated before graph execution.
+    * ``State`` — ``TypedDict`` used as the internal LangGraph state schema.
+    * ``OutputState`` — ``TypedDict`` used as the LangGraph ``output_schema``
+      to filter state keys emitted by the final node.
+    * ``OutputData`` — Pydantic ``BaseModel`` the raw graph output is
+      deserialized into after execution.
+
+    Subclasses must implement :meth:`_configurate_graph` to define nodes
+    and edges.
 
     Args:
-        state_schema: Pydantic model or TypedDict defining the graph state.
-        output_schema: Pydantic model or TypedDict for the output structure.
+        state_schema: TypedDict class defining the internal graph state.
         llm_adapter: Adapter wrapping the LLM for standardized invocation.
         prompt_builder: Manager for loading and building prompt templates.
+        output_data_model: Pydantic model class used to validate graph output.
+        output_schema: Optional TypedDict class passed to LangGraph to filter
+            emitted state keys.  When ``None``, the full state is returned.
         recursion_limit: Maximum recursion depth for graph execution.
         langfuse_handler: Optional callback handler for Langfuse tracing.
-
-    Attributes:
-        _llm_adapter: The LLM adapter instance.
-        _prompt_builder: The prompt manager instance.
-        _langfuse_handler: Optional Langfuse callback handler.
-        _recursion_limit: Maximum recursion depth.
-        _graph: Compiled state graph ready for execution.
-        output_schema: Schema class for output validation.
     """
 
     def __init__(
@@ -54,6 +59,7 @@ class BaseGraph(StateGraph, ABC, Generic[InputState, State, OutputState]):
         state_schema: type[State],
         llm_adapter: LLMAdapter,
         prompt_builder: BasePromptManager,
+        output_data_model: type[OutputData],
         output_schema: Optional[type[OutputState]] = None,
         recursion_limit: int = DEFAULT_GRAPH_RECURSION_LIMIT,
         langfuse_handler: Optional[CallbackHandler] = None,
@@ -74,6 +80,7 @@ class BaseGraph(StateGraph, ABC, Generic[InputState, State, OutputState]):
             self._recursion_limit = DEFAULT_GRAPH_RECURSION_LIMIT
 
         self.output_schema: Optional[type[OutputState]] = output_schema
+        self._output_data_model: type[OutputData] = output_data_model
         self.graph: CompiledStateGraph = self._build_graph()
 
     @property
@@ -91,20 +98,24 @@ class BaseGraph(StateGraph, ABC, Generic[InputState, State, OutputState]):
 
     async def process(
         self,
-        input_state: InputState,
-    ) -> OutputState:
+        input_data: InputData,
+    ) -> OutputData:
         """Execute the graph with the given input state.
 
+        Serializes ``input_data`` via ``model_dump()``, invokes the compiled
+        graph, and deserializes the raw result into ``OutputData``.
+
         Args:
-            input_state: Initial state dictionary conforming to the input schema.
+            input_data: Pydantic model instance with validated input fields.
 
         Returns:
-            Graph output conforming to the output schema.
+            Validated ``OutputData`` model built from the graph result.
 
         Raises:
-            GraphError: If graph execution fails or returns ``None``.
+            GraphError: If graph execution fails, returns ``None``, or the
+                result cannot be deserialized into ``OutputData``.
         """
-        graph_process_configs: Dict[str, Any] = {
+        graph_process_configs: RunnableConfig = {
             "recursion_limit": self._recursion_limit,
         }
         if self._langfuse_handler:
@@ -112,7 +123,7 @@ class BaseGraph(StateGraph, ABC, Generic[InputState, State, OutputState]):
 
         try:
             graph_result = await self.graph.ainvoke(
-                input_state,
+                {"input_data": input_data.model_dump()},
                 config=graph_process_configs,
             )
         except Exception as exc:
@@ -125,7 +136,11 @@ class BaseGraph(StateGraph, ABC, Generic[InputState, State, OutputState]):
                 f"Graph {self.__class__.__name__} returned None response",
             )
 
-        return graph_result
+        try:
+            return self._output_data_model(**graph_result)
+        except (ValidationError, TypeError) as exc:
+            self._logger.error("%s invalid output data: %s", self.__class__.__name__, exc)
+            raise GraphError(f"Graph {self.__class__.__name__} returned invalid output data") from exc
 
     def _build_graph(self) -> CompiledStateGraph:
         """Build and compile the graph.

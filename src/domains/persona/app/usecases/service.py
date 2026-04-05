@@ -16,8 +16,8 @@ from src.domains.persona.infrastructure.graph.user_segment_search import (
     UserSegmentSearchGraph,
 )
 from src.domains.persona.schemas.generate_persona.state_schemas import (
-    GeneratePersonasInputSchema,
-    GeneratePersonasOutputSchema,
+    GeneratePersonasInputData,
+    GeneratePersonasOutputData,
 )
 from src.schemas.persona import (
     CreatePersonaSchema,
@@ -51,7 +51,7 @@ class PersonaService:
     async def generate_persona(
         self,
         interview_id: uuid.UUID,
-        generate_persona_state: GeneratePersonasInputSchema,
+        generate_persona_input: GeneratePersonasInputData,
     ) -> None:
         """Generate personas via LangGraph and persist them.
 
@@ -60,13 +60,13 @@ class PersonaService:
 
         Args:
             interview_id: Interview to associate generated personas with.
-            generate_persona_state: Input state for the generation graph.
+            generate_persona_input: Validated input data for the generation graph.
         """
-        generate_personas_response: GeneratePersonasOutputSchema = await self._generate_personas_graph.process(
-            generate_persona_state,
+        generate_personas_response: GeneratePersonasOutputData = await self._generate_personas_graph.process(
+            generate_persona_input,
         )
 
-        for persona in generate_personas_response["personas"]:
+        for persona in generate_personas_response.personas:
             await self._personas_repository.create(
                 CreatePersonaSchema(
                     interview_id=interview_id,

@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any
 
 from langgraph.graph import END, START
 
@@ -11,10 +11,13 @@ from src.domains.persona.infrastructure.graph.graph_utils import (
 from src.domains.persona.infrastructure.prompt.prompt_manager import (
     PersonaPromptManager,
 )
-from src.domains.persona.schemas.generate_persona import (
+from src.domains.persona.schemas.generate_persona.demographic_persona import (
     DemographicAttributePersona,
-    GeneratePersonaInputSchema,
+)
+from src.domains.persona.schemas.generate_persona.state_schemas import (
+    GeneratePersonaInputData,
     GeneratePersonaSchema,
+    GeneratePersonasOutputData,
     GeneratePersonasOutputSchema,
     PersonaSchema,
 )
@@ -22,7 +25,12 @@ from src.infrastructure.graph.base_graph import BaseGraph
 
 
 class GenerateSinglePersonaGraph(
-    BaseGraph[GeneratePersonaInputSchema, GeneratePersonaSchema, GeneratePersonasOutputSchema],
+    BaseGraph[
+        GeneratePersonaInputData,
+        GeneratePersonaSchema,
+        GeneratePersonasOutputSchema,
+        GeneratePersonasOutputData,
+    ],
 ):
 
     _prompt_builder: PersonaPromptManager
@@ -32,6 +40,7 @@ class GenerateSinglePersonaGraph(
         super().__init__(
             state_schema=GeneratePersonaSchema,
             output_schema=GeneratePersonasOutputSchema,
+            output_data_model=GeneratePersonasOutputData,
             **kwargs,
         )
         self._logger = get_logger(f"{__name__}.{self.__class__.__name__}")
@@ -52,7 +61,7 @@ class GenerateSinglePersonaGraph(
 
         self.add_edge("format_output", END)
 
-    async def _generate_persona_attribute(self, state: GeneratePersonaSchema) -> Dict[str, Any]:
+    async def _generate_persona_attribute(self, state: GeneratePersonaSchema) -> GeneratePersonaSchema:
         """Create a demographic attribute person based on the input data."""
         segment_name = get_segment_name(state)
         segment_description = get_segment_description(state)
@@ -71,7 +80,7 @@ class GenerateSinglePersonaGraph(
             "demographic_attributes": response_structured,
         }
 
-    async def _generate_persona_biography(self, state: GeneratePersonaSchema) -> Dict[str, Any]:
+    async def _generate_persona_biography(self, state: GeneratePersonaSchema) -> GeneratePersonaSchema:
         """Generate a biography for the persona based on the demographic attributes."""
         demographic_attributes = get_demographic_attributes(state)
 
@@ -88,7 +97,7 @@ class GenerateSinglePersonaGraph(
             "biography": response,
         }
 
-    async def _generate_persona_experiences(self, state: GeneratePersonaSchema) -> Dict[str, Any]:
+    async def _generate_persona_experiences(self, state: GeneratePersonaSchema) -> GeneratePersonaSchema:
         """Generate the experiences of the persona with the problem based on the demographic attributes."""
         demographic_attributes = get_demographic_attributes(state)
 
@@ -114,8 +123,8 @@ class GenerateSinglePersonaGraph(
 
         persona = PersonaSchema(
             demographic_attributes=demographic_attributes,
-            biography=state.get("biography", ""),
-            experiences=state.get("experiences", ""),
+            biography=state.get("biography") or "",
+            experiences=state.get("experiences") or "",
         )
 
         return {
