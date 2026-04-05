@@ -71,7 +71,7 @@ class GenerateSinglePersonaGraph(
             segment_description=segment_description,
         )
 
-        response_structured: DemographicAttributePersona = await self._llm_adapter.structured_ainvoke(
+        response_structured = await self._llm_adapter.structured_ainvoke(
             prompt,
             DemographicAttributePersona,
         )

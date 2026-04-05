@@ -2,16 +2,30 @@
 Adapter for LangChain LLMs.
 """
 
-from typing import Any, AsyncIterable, Dict, List, Protocol
+from typing import (
+    Any,
+    AsyncIterable,
+    Dict,
+    List,
+    Protocol,
+    TypeVar,
+    Union,
+    overload,
+)
 
 import instructor
 from json_repair import repair_json
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langchain_core.tools import BaseTool
+from pydantic import BaseModel
 
 from src.configs.consts import INSTRUCTOR_ROLE_MAP
 from src.configs.log.logger import get_logger
-from src.schemas.base import Schema
+
+Schema = TypeVar("Schema", bound=BaseModel)
+
+SchemaInput = Union[type[BaseModel], Dict[str, Any]]
+SchemaOutput = Union[BaseModel, Dict[str, Any]]
 
 
 class LLMProtocol(Protocol):
@@ -30,7 +44,7 @@ class LLMProtocol(Protocol):
 
     def with_structured_output(
         self,
-        schema: type[Schema],
+        schema: SchemaInput,
         include_raw: bool = False,
         method: str = "json_mode",
     ) -> "LLMProtocol": ...
@@ -60,7 +74,7 @@ class LLMAdapter:
     @staticmethod
     def to_openai_message(message: BaseMessage) -> dict[str, str]:
         role = INSTRUCTOR_ROLE_MAP.get(message.type, message.type)
-        return {"role": role, "content": message.content}
+        return {"role": role, "content": str(message.content)}
 
     async def ainvoke(self, messages: List[BaseMessage], **kwargs: Any) -> str:
         """Invoke the LLM and return the generated text as a plain string.
@@ -82,7 +96,7 @@ class LLMAdapter:
         except Exception as exc:
             self._logger.error(f"LLM invocation error: {exc}")
             raise RuntimeError(f"Failed to invoke LLM: {exc}") from exc
-        return response.content
+        return str(response.content)
 
     async def astream(self, messages: List[BaseMessage], **kwargs: Any) -> AsyncIterable[AIMessage]:
         """Stream AIMessage chunks from the LLM.
@@ -182,27 +196,45 @@ class LLMAdapter:
             raise RuntimeError(f"Failed to update LLM config: {exc}") from exc
         return LLMAdapter(updated_llm)
 
+    @overload
     async def structured_ainvoke(
         self,
         messages: List[BaseMessage],
         schema: type[Schema],
         max_retries: int = 3,
         **kwargs: Any,
-    ) -> Schema:
-        """Invoke the LLM and return a validated instance of schema.
+    ) -> Schema: ...
+
+    @overload
+    async def structured_ainvoke(
+        self,
+        messages: List[BaseMessage],
+        schema: Dict[str, Any],
+        max_retries: int = 3,
+        **kwargs: Any,
+    ) -> Dict[str, Any]: ...
+
+    async def structured_ainvoke(
+        self,
+        messages: List[BaseMessage],
+        schema: Union[type[Schema], Dict[str, Any]],
+        max_retries: int = 3,
+        **kwargs: Any,
+    ) -> Union[Schema, Dict[str, Any]]:
+        """Invoke the LLM and return a validated instance of ``schema``.
 
         Tries Instructor first when available, then falls back to the manual
-        LangChain retry loop. Both paths retry up to max_retries times and
+        LangChain retry loop. Both paths retry up to ``max_retries`` times and
         send the validation error back to the model as feedback on each failed
-        attempt, which significantly increases the success rate compared to a
-        plain single-shot call.
+        attempt.
 
         Parameters
         ----------
         messages
             Conversation history to pass to the model.
         schema
-            A Pydantic BaseModel subclass describing the expected output shape.
+            A Pydantic BaseModel subclass or a plain dict schema describing
+            the expected output shape.
         max_retries
             Maximum number of attempts before raising RuntimeError.
         **kwargs
@@ -213,7 +245,7 @@ class LLMAdapter:
         RuntimeError
             Raised when all retry attempts are exhausted without a valid result.
         """
-        if not self._instructor_client:
+        if not self._instructor_client or isinstance(schema, dict):
             self._logger.warning("Instructor client not available, falling back to base structured invoke.")
             return await self._base_structured_ainvoke(messages, schema, max_retries, **kwargs)
 
@@ -238,10 +270,7 @@ class LLMAdapter:
             return None
 
     def _try_repair_json(self, raw_content: str, schema: type[Schema]) -> Schema | None:
-        """Try to fix malformed JSON with json-repair and validate it against schema.
-
-        Returns a validated schema instance on success, or None if repair fails.
-        """
+        """Try to fix malformed JSON with json-repair and validate against ``schema``."""
         try:
             fixed_json = repair_json(raw_content)
         except Exception as repair_exc:
@@ -250,8 +279,8 @@ class LLMAdapter:
 
         try:
             return schema.model_validate_json(fixed_json)
-        except Exception as repair_exc:
-            self._logger.debug(f"json-repair failed: {repair_exc}")
+        except Exception as validate_exc:
+            self._logger.debug(f"json-repair validation failed: {validate_exc}")
             return None
 
     def _build_feedback_messages(
@@ -275,7 +304,7 @@ class LLMAdapter:
 
     def _handle_parse_failure(
         self,
-        response: Schema,
+        response: Dict[str, Any],
         current_messages: List[BaseMessage],
         attempt: int,
         max_retries: int,
@@ -284,7 +313,7 @@ class LLMAdapter:
         """Handle a failed parse attempt.
 
         Tries json-repair first. If that fails, builds feedback messages for
-        the next LLM retry. Returns a tuple of (repaired_result_or_None, updated_messages).
+        the next LLM retry. Returns ``(repaired_result_or_None, updated_messages)``.
         """
         parsing_error = response.get("parsing_error")
         raw = response.get("raw")
@@ -300,26 +329,59 @@ class LLMAdapter:
         updated_messages = self._build_feedback_messages(current_messages, raw_content, parsing_error)
         return None, updated_messages
 
+    def _process_attempt(
+        self,
+        response: Dict[str, Any],
+        exc: Exception | None,
+        current_messages: List[BaseMessage],
+        attempt: int,
+        max_retries: int,
+        schema: SchemaInput,
+    ) -> tuple[SchemaOutput | None, List[BaseMessage], Exception | None]:
+        """Process a single structured invocation attempt.
+
+        Returns ``(result_or_None, updated_messages, error_or_None)``.
+        """
+        if exc:
+            self._logger.error(f"Attempt {attempt}/{max_retries} unexpected error: {exc}")
+            return None, current_messages, exc
+
+        parsed = response.get("parsed")
+        if parsed:
+            return parsed, current_messages, None
+
+        if isinstance(schema, type) and issubclass(schema, BaseModel):
+            repaired, current_messages = self._handle_parse_failure(
+                response,
+                current_messages,
+                attempt,
+                max_retries,
+                schema,
+            )
+            if repaired:
+                return repaired, current_messages, None
+
+        return None, current_messages, None
+
     async def _base_structured_ainvoke(
         self,
         messages: List[BaseMessage],
-        schema: type[Schema],
+        schema: Union[type[Schema], Dict[str, Any]],
         max_retries: int = 3,
         **kwargs: Any,
-    ) -> Schema:
-        """Structured invocation fallback using LangChain's with_structured_output.
+    ) -> Union[Schema, Dict[str, Any]]:
+        """Structured invocation fallback using LangChain's ``with_structured_output``.
 
         On each failed parse attempt the raw invalid output and the validation
         error message are appended to the conversation so the model can
-        self-correct on the next try. Before retrying the LLM, json-repair is
-        attempted on the raw output as a cheaper recovery path.
+        self-correct on the next try.
 
         Parameters
         ----------
         messages
             Conversation history to pass to the model.
         schema
-            A Pydantic BaseModel subclass describing the expected output shape.
+            A Pydantic BaseModel subclass or a plain dict schema.
         max_retries
             Maximum number of attempts before raising RuntimeError.
         **kwargs
@@ -332,26 +394,24 @@ class LLMAdapter:
         """
         current_messages = list(messages)
         last_exc: Exception | None = None
-        structured_llm = self._llm.with_structured_output(schema, include_raw=True, method="json_mode")
+        structured_llm = self._llm.with_structured_output(
+            schema,
+            include_raw=True,
+            method="json_mode",
+        )
 
         for attempt in range(1, max_retries + 1):
-            response, exc = await self._safe_invoke(structured_llm, current_messages, **kwargs)
-
-            if exc:
-                last_exc = exc
-                self._logger.error(f"Attempt {attempt}/{max_retries} unexpected error: {exc}")
-            elif response.get("parsed"):
-                return response["parsed"]
-            else:
-                handle_result, current_messages = self._handle_parse_failure(
-                    response,
-                    current_messages,
-                    attempt,
-                    max_retries,
-                    schema,
-                )
-                if handle_result:
-                    return handle_result
+            response, invoke_exc = await self._safe_invoke(structured_llm, current_messages, **kwargs)
+            result_value, current_messages, last_exc = self._process_attempt(
+                response,
+                invoke_exc,
+                current_messages,
+                attempt,
+                max_retries,
+                schema,
+            )
+            if result_value is not None:
+                return result_value
 
         raise RuntimeError(
             f"Failed to get structured output after {max_retries} attempts. Last error: {last_exc}",
@@ -362,8 +422,8 @@ class LLMAdapter:
         structured_llm: LLMProtocol,
         messages: List[BaseMessage],
         **kwargs: Any,
-    ) -> tuple[Schema, Exception | None]:
-        """Invoke the structured LLM and return (response, error).
+    ) -> tuple[Dict[str, Any], Exception | None]:
+        """Invoke the structured LLM and return ``(response, error)``.
 
         Never raises — exceptions are returned as the second tuple element
         so the retry loop can stay flat without nested try blocks.
