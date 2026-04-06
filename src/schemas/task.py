@@ -13,9 +13,16 @@ from pydantic import BaseModel, ConfigDict, Discriminator, Field
 from src.domains.task.app.constants import TaskStatus, TaskType
 from src.schemas.api_base import VerboseBase
 from src.schemas.persona import (
-    GeneratePersonasInputData,
-    GenerateSinglePersonaInputData,
+    GeneratePersonasTaskInputData,
+    GenerateSinglePersonaTaskInputData,
+    PersonasPipelineTaskInputData,
 )
+
+TaskInputParams = Union[
+    PersonasPipelineTaskInputData,
+    GenerateSinglePersonaTaskInputData,
+    GeneratePersonasTaskInputData,
+]
 
 if TYPE_CHECKING:
     from src.schemas.user import UserEntitySchema
@@ -39,7 +46,7 @@ class CreateTaskSchema(BaseModel):
     progress: float = Field(default=0, ge=0, le=1.0)
     error_log: Optional[str] = None
     input_params: Annotated[
-        Union[GenerateSinglePersonaInputData, GeneratePersonasInputData],
+        Union[PersonasPipelineTaskInputData, GenerateSinglePersonaTaskInputData, GeneratePersonasTaskInputData],
         Discriminator("task_type"),
     ]
     user_id: uuid.UUID

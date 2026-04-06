@@ -7,10 +7,12 @@ from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, Query, Response, status
 
 from src.configs.log.logger import get_logger
-from src.domains.task.app.requests.schema import (
+from src.domains.task.app.requests.schema import (  # noqa: WPS235
     GetTasksRequest,
     PostCreateTaskRequest,
-    PostRedisRegisterGeneratePersonaTaskRequest,
+    PostGeneratePersonasTaskRequest,
+    PostPersonasPipelineTaskRequest,
+    PostSinglePersonaTaskRequest,
     PutUpdateTaskRequest,
     TaskBoolResponse,
     TaskCountResponse,
@@ -21,7 +23,11 @@ from src.domains.task.app.usecases.service import TaskService
 from src.domains.task.exceptions import TaskError, TaskNotFound, TaskQueueError
 from src.infrastructure.containers.domain import DomainContainer
 from src.schemas.api_base import ResponseBase, StatusType
-from src.schemas.persona import GeneratePersonasInputData
+from src.schemas.persona import (
+    GeneratePersonasTaskInputData,
+    GenerateSinglePersonaTaskInputData,
+    PersonasPipelineTaskInputData,
+)
 
 _logger = get_logger(__name__)
 
@@ -32,21 +38,113 @@ router = APIRouter(
 
 
 @router.post(
+    "/personas_pipeline_task",
+    response_model=TaskBoolResponse | ResponseBase,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+@inject
+async def redis_register_personas_pipeline_task(
+    response: Response,
+    request_data: PostPersonasPipelineTaskRequest,
+    task_service: TaskService = Depends(Provide[DomainContainer.task.task_service]),
+) -> TaskBoolResponse | ResponseBase:
+    """Register a full persona pipeline task and enqueue it in Redis."""
+    try:
+        await task_service.register_personas_pipeline_task(
+            user_id=request_data.user_id,
+            task_input=PersonasPipelineTaskInputData(
+                interview_id=request_data.interview_id,
+                user_prompt=request_data.user_prompt,
+                person_count=request_data.person_count,
+            ),
+        )
+    except TaskQueueError as exc:
+        _logger.error("Task registration personas pipeline in redis queue failed: %s", exc)
+        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+        return ResponseBase(
+            details=f"Task registration personas pipeline in redis queue failed: {exc}",
+            status=StatusType.ERROR,
+        )
+    except TaskError as exc:
+        _logger.error("Task registration personas pipeline failed: %s", exc)
+        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+        return ResponseBase(
+            details=f"Task registration personas pipeline failed: {exc}",
+            status=StatusType.ERROR,
+        )
+    except Exception as exc:
+        _logger.exception("Unexpected error during task registration personas pipeline")
+        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+        return ResponseBase(
+            details=f"Internal server error: {exc}",
+            status=StatusType.ERROR,
+        )
+
+    return TaskBoolResponse(msg=True, status=StatusType.SUCCESS)
+
+
+@router.post(
+    "/generate_single_persona_task",
+    response_model=TaskBoolResponse | ResponseBase,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+@inject
+async def redis_register_generate_single_persona_task(
+    response: Response,
+    request_data: PostSinglePersonaTaskRequest,
+    task_service: TaskService = Depends(Provide[DomainContainer.task.task_service]),
+) -> TaskBoolResponse | ResponseBase:
+    """Register a single persona generation task and enqueue it in Redis."""
+    try:
+        await task_service.register_generate_single_persona_task(
+            user_id=request_data.user_id,
+            task_input=GenerateSinglePersonaTaskInputData(
+                interview_id=request_data.interview_id,
+                segment_name=request_data.segment_name,
+                segment_description=request_data.segment_description,
+            ),
+        )
+    except TaskQueueError as exc:
+        _logger.error("Task registration generate single persona in redis queue failed: %s", exc)
+        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+        return ResponseBase(
+            details=f"Task registration generate single persona in redis queue failed: {exc}",
+            status=StatusType.ERROR,
+        )
+    except TaskError as exc:
+        _logger.error("Task registration generate single persona failed: %s", exc)
+        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+        return ResponseBase(
+            details=f"Task registration generate single persona failed: {exc}",
+            status=StatusType.ERROR,
+        )
+    except Exception as exc:
+        _logger.exception("Unexpected error during task registration generate single persona")
+        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+        return ResponseBase(
+            details=f"Internal server error: {exc}",
+            status=StatusType.ERROR,
+        )
+
+    return TaskBoolResponse(msg=True, status=StatusType.SUCCESS)
+
+
+@router.post(
     "/generate_personas_task",
     response_model=TaskBoolResponse | ResponseBase,
     status_code=status.HTTP_202_ACCEPTED,
 )
 @inject
-async def redis_register_generation_personas_task(
+async def redis_register_generate_personas_task(
     response: Response,
-    request_data: PostRedisRegisterGeneratePersonaTaskRequest,
+    request_data: PostGeneratePersonasTaskRequest,
     task_service: TaskService = Depends(Provide[DomainContainer.task.task_service]),
 ) -> TaskBoolResponse | ResponseBase:
-    """Register a persona generation task and enqueue it in Redis."""
+    """Register a batch persona generation task and enqueue it in Redis."""
     try:
         await task_service.register_generate_personas_task(
             user_id=request_data.user_id,
-            generate_personas_input=GeneratePersonasInputData(
+            task_input=GeneratePersonasTaskInputData(
                 interview_id=request_data.interview_id,
                 segment_name=request_data.segment_name,
                 segment_description=request_data.segment_description,

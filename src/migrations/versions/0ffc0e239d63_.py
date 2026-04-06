@@ -19,6 +19,7 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 task_type_enum = sa.Enum(
+    "PERSONAS_PIPELINE",
     "PERSONAS_GENERATION",
     "SINGLE_PERSONA_GENERATION",
     "SUB_INTERVIEW_GENERATION",

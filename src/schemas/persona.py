@@ -16,6 +16,10 @@ from src.domains.persona.schemas.generate_persona.demographic_persona import (
 )
 from src.domains.persona.schemas.generate_persona.state_schemas import (
     GeneratePersonaInputData,
+    GeneratePersonasInputData,
+)
+from src.domains.persona.schemas.user_segment_search import (
+    UserSegmentSearchInputData,
 )
 from src.schemas.api_base import VerboseBase
 
@@ -23,7 +27,26 @@ if TYPE_CHECKING:
     from src.schemas.interview import InterviewEntitySchema
 
 
-class GenerateSinglePersonaInputData(GeneratePersonaInputData):
+class PersonasPipelineTaskInputData(UserSegmentSearchInputData):
+    """Task input for the full persona generation pipeline.
+
+    Triggers user segment search followed by batch persona generation.
+    Extends ``UserSegmentSearchInputData`` with a discriminator tag,
+    interview reference, and desired persona count.
+
+    Attributes:
+        task_type: Discriminator literal used by the ``Discriminator``
+            validator on ``CreateTaskSchema.input_params``.
+        interview_id: UUID of the interview that triggered generation.
+        person_count: Number of personas to generate for the discovered segment.
+    """
+
+    task_type: Literal["personas_pipeline"] = "personas_pipeline"
+    interview_id: uuid.UUID
+    person_count: int = Field(..., description="The number of personas to create.")
+
+
+class GenerateSinglePersonaTaskInputData(GeneratePersonaInputData):
     """Task input for generating a single persona.
 
     Extends graph-level input with a discriminator tag and interview
@@ -39,7 +62,7 @@ class GenerateSinglePersonaInputData(GeneratePersonaInputData):
     interview_id: uuid.UUID
 
 
-class GeneratePersonasInputData(GeneratePersonaInputData):
+class GeneratePersonasTaskInputData(GeneratePersonasInputData):
     """Task input for batch persona generation.
 
     Extends graph-level input with a discriminator tag and interview

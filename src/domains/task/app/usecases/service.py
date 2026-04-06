@@ -13,9 +13,14 @@ from src.domains.task.exceptions import (
     TaskQueueError,
     TaskUpdateFailed,
 )
-from src.schemas.persona import GeneratePersonasInputData
+from src.schemas.persona import (
+    GeneratePersonasTaskInputData,
+    GenerateSinglePersonaTaskInputData,
+    PersonasPipelineTaskInputData,
+)
 from src.schemas.task import (
     CreateTaskSchema,
+    TaskInputParams,
     TaskRelEntitySchema,
     TaskSchema,
     UpdateTaskSchema,
@@ -42,54 +47,56 @@ class TaskService:
         self._tasks_repository = tasks_repository
         self._redis_task_repository = redis_task_repository
 
-    async def register_generate_personas_task(
+    async def register_personas_pipeline_task(
         self,
         user_id: uuid.UUID,
-        generate_personas_input: GeneratePersonasInputData,
+        task_input: PersonasPipelineTaskInputData,
     ) -> None:
-        """Create a task in Postgres and enqueue it in Redis.
-
-        If enqueue fails the task is marked as FAILED so it does not
-        remain stuck in PENDING state forever.
+        """Register a full persona pipeline task (segment search + generation).
 
         Args:
             user_id: Owner of the task.
-            generate_personas_input: Input parameters for persona generation.
+            task_input: Input with user prompt, interview reference, and persona count.
 
         Raises:
             TaskCreationFailed: If Postgres insert fails.
             TaskQueueError: If Redis enqueue fails (task is marked FAILED first).
         """
-        task_entity = await self.create_task(
-            CreateTaskSchema(
-                user_id=user_id,
-                type=TaskType.PERSONAS_GENERATION,
-                input_params=generate_personas_input,
-            ),
-        )
-        self._logger.debug("Task type %s successfully created in DB", task_entity.type)
+        await self._register_task(user_id, TaskType.PERSONAS_PIPELINE, task_input)
 
-        try:
-            queue_length = await self._redis_task_repository.enqueue(
-                TaskSchema(
-                    task_id=task_entity.id,
-                    user_id=user_id,
-                    type=TaskType.PERSONAS_GENERATION,
-                    input_params=generate_personas_input,
-                ),
-            )
-        except TaskQueueError:
-            await self._tasks_repository.update_by_id(
-                task_entity.id,
-                UpdateTaskSchema(status=TaskStatus.FAILED),
-            )
-            raise
+    async def register_generate_personas_task(
+        self,
+        user_id: uuid.UUID,
+        task_input: GeneratePersonasTaskInputData,
+    ) -> None:
+        """Register a batch persona generation task.
 
-        self._logger.debug(
-            "Task %s enqueued in Redis, queue length: %s",
-            task_entity.id,
-            queue_length,
-        )
+        Args:
+            user_id: Owner of the task.
+            task_input: Input with segment info, interview reference, and persona count.
+
+        Raises:
+            TaskCreationFailed: If Postgres insert fails.
+            TaskQueueError: If Redis enqueue fails (task is marked FAILED first).
+        """
+        await self._register_task(user_id, TaskType.PERSONAS_GENERATION, task_input)
+
+    async def register_generate_single_persona_task(
+        self,
+        user_id: uuid.UUID,
+        task_input: GenerateSinglePersonaTaskInputData,
+    ) -> None:
+        """Register a single persona generation task.
+
+        Args:
+            user_id: Owner of the task.
+            task_input: Input with segment info and interview reference.
+
+        Raises:
+            TaskCreationFailed: If Postgres insert fails.
+            TaskQueueError: If Redis enqueue fails (task is marked FAILED first).
+        """
+        await self._register_task(user_id, TaskType.SINGLE_PERSONA_GENERATION, task_input)
 
     async def create_task(self, create_task_data: CreateTaskSchema) -> TaskRelEntitySchema:
         """Persist a new task entity.
@@ -190,3 +197,54 @@ class TaskService:
         if deleted_id is None:
             self._logger.error("Task not found for deletion: %s", task_id)
             raise TaskDeletionFailed(f"Task with id={task_id} does not exist.")
+
+    async def _register_task(
+        self,
+        user_id: uuid.UUID,
+        task_type: TaskType,
+        task_input: TaskInputParams,
+    ) -> None:
+        """Persist a task in Postgres and enqueue it in Redis.
+
+        If enqueue fails the task is rolled back to FAILED status so it
+        does not remain stuck in PENDING state forever.
+
+        Args:
+            user_id: Owner of the task.
+            task_type: Type of the task to register.
+            task_input: Validated, discriminator-tagged input payload.
+
+        Raises:
+            TaskCreationFailed: If Postgres insert fails.
+            TaskQueueError: If Redis enqueue fails (task is marked FAILED first).
+        """
+        task_entity = await self.create_task(
+            CreateTaskSchema(
+                user_id=user_id,
+                type=task_type,
+                input_params=task_input,
+            ),
+        )
+        self._logger.debug("Task type %s successfully created in DB", task_entity.type)
+
+        try:
+            queue_length = await self._redis_task_repository.enqueue(
+                TaskSchema(
+                    task_id=task_entity.id,
+                    user_id=user_id,
+                    type=task_type,
+                    input_params=task_input,
+                ),
+            )
+        except TaskQueueError:
+            await self._tasks_repository.update_by_id(
+                task_entity.id,
+                UpdateTaskSchema(status=TaskStatus.FAILED),
+            )
+            raise
+
+        self._logger.debug(
+            "Task %s enqueued in Redis, queue length: %s",
+            task_entity.id,
+            queue_length,
+        )

@@ -12,8 +12,26 @@ from src.schemas.task import (
 )
 
 
-class PostRedisRegisterGeneratePersonaTaskRequest(BaseModel):
-    """Request schema for registering a persona generation task in Redis."""
+class PostPersonasPipelineTaskRequest(BaseModel):
+    """Request schema for registering a full persona pipeline task in Redis."""
+
+    user_id: uuid.UUID
+    interview_id: uuid.UUID
+    user_prompt: str
+    person_count: int
+
+
+class PostSinglePersonaTaskRequest(BaseModel):
+    """Request schema for registering a single persona generation task in Redis."""
+
+    user_id: uuid.UUID
+    interview_id: uuid.UUID
+    segment_name: str
+    segment_description: str
+
+
+class PostGeneratePersonasTaskRequest(BaseModel):
+    """Request schema for registering a batch persona generation task in Redis."""
 
     user_id: uuid.UUID
     interview_id: uuid.UUID

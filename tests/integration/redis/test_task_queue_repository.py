@@ -12,7 +12,7 @@ import pytest
 from src.domains.task.app.constants import TaskStatus, TaskType
 from src.domains.task.db.redis.repository import TaskQueueRepository
 from src.domains.task.exceptions import TaskQueueError
-from src.schemas.persona import GeneratePersonasInputData
+from src.schemas.persona import GeneratePersonasTaskInputData
 from src.schemas.task import TaskSchema
 
 
@@ -24,7 +24,7 @@ def _build_task(**overrides: object) -> TaskSchema:
         "status": TaskStatus.PENDING,
         "progress": 0,
         "error_log": None,
-        "input_params": GeneratePersonasInputData(
+        "input_params": GeneratePersonasTaskInputData(
             segment_name="developers",
             segment_description="Software developers segment",
             person_count=3,

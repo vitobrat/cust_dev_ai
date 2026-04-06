@@ -10,7 +10,7 @@ from collections.abc import Callable
 from src.domains.task.app.constants import TaskStatus, TaskType
 from src.domains.task.db.postgres.repository import TaskRepository
 from src.infrastructure.db.postgres.client import DatabaseClient
-from src.schemas.persona import GeneratePersonasInputData
+from src.schemas.persona import GeneratePersonasTaskInputData
 from src.schemas.task import (
     CreateTaskSchema,
     TaskRelEntitySchema,
@@ -158,7 +158,7 @@ class TestTaskRepositoryCreate:
         """Verify that create() correctly persists input_params field."""
         # Arrange
         repo = TaskRepository(db_client)
-        input_params = GeneratePersonasInputData(
+        input_params = GeneratePersonasTaskInputData(
             segment_name="test_segment",
             segment_description="test_description",
             person_count=5,
@@ -698,7 +698,7 @@ class TestTaskRepositoryUpdateById:
         # Arrange
         repo = TaskRepository(db_client)
         assert task.id is not None
-        new_params = GeneratePersonasInputData(
+        new_params = GeneratePersonasTaskInputData(
             segment_name="updated_segment",
             segment_description="updated_description",
             person_count=10,

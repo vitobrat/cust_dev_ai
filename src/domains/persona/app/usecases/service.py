@@ -19,12 +19,15 @@ from src.domains.persona.infrastructure.graph.user_segment_search import (
     UserSegmentSearchGraph,
 )
 from src.domains.persona.schemas.generate_persona.state_schemas import (
+    GeneratePersonaInputData,
     GeneratePersonasInputData,
     PersonaSchema,
 )
+from src.domains.persona.schemas.user_segment_search import (
+    UserSegmentSearchInputData,
+)
 from src.schemas.persona import (
     CreatePersonaSchema,
-    GenerateSinglePersonaInputData,
     PersonaRelEntitySchema,
     UpdatePersonasSchema,
 )
@@ -55,10 +58,37 @@ class PersonaService:
         self._user_segment_search_graph = user_segment_search_graph
         self._personas_repository = personas_repository
 
+    async def generate_personas_pipeline(
+        self,
+        interview_id: uuid.UUID,
+        person_count: int,
+        generate_personas_pipeline_input: UserSegmentSearchInputData,
+    ) -> None:
+        """Run the full persona generation pipeline.
+
+        First discovers a user segment via the search graph, then generates
+        ``person_count`` personas for that segment and persists them.
+
+        Args:
+            interview_id: Interview to associate generated personas with.
+            person_count: Number of personas to generate.
+            generate_personas_pipeline_input: User prompt for segment discovery.
+        """
+        user_segment_response = await self._user_segment_search_graph.process(generate_personas_pipeline_input)
+
+        await self.generate_personas(
+            interview_id=interview_id,
+            generate_personas_input=GeneratePersonasInputData(
+                segment_name=user_segment_response.segment_name,
+                segment_description=user_segment_response.segment_description,
+                person_count=person_count,
+            ),
+        )
+
     async def generate_single_persona(
         self,
         interview_id: uuid.UUID,
-        generate_single_persona_input: GenerateSinglePersonaInputData,
+        generate_single_persona_input: GeneratePersonaInputData,
     ) -> None:
         """Generate a single persona via LangGraph and persist it.
 
