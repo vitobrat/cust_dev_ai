@@ -16,7 +16,7 @@ from src.domains.interview.app.workers.handler import (
 )
 from src.domains.interview.db.postgres.repository import InterviewRepository
 from src.domains.persona.app.usecases.service import PersonaService
-from src.domains.persona.app.workers.handler import PersonaGenerationTaskHandler
+from src.domains.persona.app.workers.handler import PersonaTaskHandler
 from src.domains.persona.db.postgres.repository import PersonaRepository
 from src.domains.persona.infrastructure.graph.generate_personas import (
     GeneratePersonasGraph,
@@ -60,6 +60,8 @@ class PersonaContainer(containers.DeclarativeContainer):
         generate_single_persona_graph: Factory for single persona generation graph.
         generate_personas_graph: Factory for batch persona generation graph.
         persona_service: Factory for PersonaService instances.
+        persona_task_handler: Singleton handler that dispatches all
+            persona-related task types to the appropriate service method.
     """
 
     config: AppConfigs = providers.Configuration()
@@ -101,12 +103,13 @@ class PersonaContainer(containers.DeclarativeContainer):
     persona_service: PersonaService = providers.Factory(
         PersonaService,
         generate_personas_graph=generate_personas_graph,
+        generate_single_persona_graph=generate_single_persona_graph,
         user_segment_search_graph=user_segment_search_graph,
         personas_repository=personas_repository,
     )
 
-    persona_generation_handler: PersonaGenerationTaskHandler = providers.Singleton(
-        PersonaGenerationTaskHandler,
+    persona_task_handler: PersonaTaskHandler = providers.Singleton(
+        PersonaTaskHandler,
         persona_service=persona_service,
     )
 

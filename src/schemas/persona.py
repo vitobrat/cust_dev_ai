@@ -7,30 +7,51 @@ and type safety.
 
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from src.domains.persona.schemas.generate_persona.demographic_persona import (
     DemographicAttributePersona,
 )
-from src.domains.persona.schemas.generate_persona.input_data import InputData
+from src.domains.persona.schemas.generate_persona.state_schemas import (
+    GeneratePersonaInputData,
+)
 from src.schemas.api_base import VerboseBase
 
 if TYPE_CHECKING:
     from src.schemas.interview import InterviewEntitySchema
 
 
-class GeneratePersonasInputData(InputData):
-    """Task input parameters for persona generation.
+class GenerateSinglePersonaInputData(GeneratePersonaInputData):
+    """Task input for generating a single persona.
 
-    Extends ``InputData`` with the interview reference so the worker
-    knows which interview the generated personas belong to.
+    Extends graph-level input with a discriminator tag and interview
+    reference so the Redis worker can route and persist correctly.
 
     Attributes:
+        task_type: Discriminator literal used by the ``Discriminator``
+            validator on ``CreateTaskSchema.input_params``.
         interview_id: UUID of the interview that triggered generation.
     """
 
+    task_type: Literal["single_persona_generation"] = "single_persona_generation"
+    interview_id: uuid.UUID
+
+
+class GeneratePersonasInputData(GeneratePersonaInputData):
+    """Task input for batch persona generation.
+
+    Extends graph-level input with a discriminator tag and interview
+    reference so the Redis worker can route and persist correctly.
+
+    Attributes:
+        task_type: Discriminator literal used by the ``Discriminator``
+            validator on ``CreateTaskSchema.input_params``.
+        interview_id: UUID of the interview that triggered generation.
+    """
+
+    task_type: Literal["personas_generation"] = "personas_generation"
     interview_id: uuid.UUID
 
 

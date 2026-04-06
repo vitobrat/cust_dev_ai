@@ -12,15 +12,19 @@ from src.domains.persona.exceptions import (
 from src.domains.persona.infrastructure.graph.generate_personas import (
     GeneratePersonasGraph,
 )
+from src.domains.persona.infrastructure.graph.generate_single_persona import (
+    GenerateSinglePersonaGraph,
+)
 from src.domains.persona.infrastructure.graph.user_segment_search import (
     UserSegmentSearchGraph,
 )
 from src.domains.persona.schemas.generate_persona.state_schemas import (
     GeneratePersonasInputData,
-    GeneratePersonasOutputData,
+    PersonaSchema,
 )
 from src.schemas.persona import (
     CreatePersonaSchema,
+    GenerateSinglePersonaInputData,
     PersonaRelEntitySchema,
     UpdatePersonasSchema,
 )
@@ -33,6 +37,7 @@ class PersonaService:
 
     Attributes:
         _generate_personas_graph: Graph for batch persona generation from interview data.
+        _generate_single_persona_graph: Graph for single persona generation.
         _user_segment_search_graph: Graph for user segment discovery.
         _personas_repository: Repository for persona persistence operations.
     """
@@ -40,41 +45,47 @@ class PersonaService:
     def __init__(
         self,
         generate_personas_graph: GeneratePersonasGraph,
+        generate_single_persona_graph: GenerateSinglePersonaGraph,
         user_segment_search_graph: UserSegmentSearchGraph,
         personas_repository: PersonaRepository,
     ) -> None:
         self._logger = get_logger(f"{__name__}.{self.__class__.__name__}")
         self._generate_personas_graph = generate_personas_graph
+        self._generate_single_persona_graph = generate_single_persona_graph
         self._user_segment_search_graph = user_segment_search_graph
         self._personas_repository = personas_repository
 
-    async def generate_persona(
+    async def generate_single_persona(
         self,
         interview_id: uuid.UUID,
-        generate_persona_input: GeneratePersonasInputData,
+        generate_single_persona_input: GenerateSinglePersonaInputData,
+    ) -> None:
+        """Generate a single persona via LangGraph and persist it.
+
+        Args:
+            interview_id: Interview to associate the generated persona with.
+            generate_single_persona_input: Validated input for the single persona graph.
+        """
+        generate_single_persona_response = await self._generate_single_persona_graph.process(
+            generate_single_persona_input,
+        )
+        await self._persist_personas(interview_id, generate_single_persona_response.personas)
+
+    async def generate_personas(
+        self,
+        interview_id: uuid.UUID,
+        generate_personas_input: GeneratePersonasInputData,
     ) -> None:
         """Generate personas via LangGraph and persist them.
 
-        Runs the generation graph, then saves each resulting persona
-        linked to the given interview.
-
         Args:
             interview_id: Interview to associate generated personas with.
-            generate_persona_input: Validated input data for the generation graph.
+            generate_personas_input: Validated input for the batch generation graph.
         """
-        generate_personas_response: GeneratePersonasOutputData = await self._generate_personas_graph.process(
-            generate_persona_input,
+        generate_personas_response = await self._generate_personas_graph.process(
+            generate_personas_input,
         )
-
-        for persona in generate_personas_response.personas:
-            await self._personas_repository.create(
-                CreatePersonaSchema(
-                    interview_id=interview_id,
-                    demographic_state=persona.demographic_attributes,
-                    bio_description=persona.biography,
-                    is_verified=False,
-                ),
-            )
+        await self._persist_personas(interview_id, generate_personas_response.personas)
 
     async def create_persona(self, create_persona_data: CreatePersonaSchema) -> PersonaRelEntitySchema:
         """Persist a new persona entity.
@@ -166,3 +177,24 @@ class PersonaService:
         if deleted_id is None:
             self._logger.error("Persona not found for deletion: %s", persona_id)
             raise PersonaDeletionFailed(f"Persona with id={persona_id} does not exist.")
+
+    async def _persist_personas(
+        self,
+        interview_id: uuid.UUID,
+        personas: list[PersonaSchema],
+    ) -> None:
+        """Save generated personas to the database.
+
+        Args:
+            interview_id: Interview to link each persona to.
+            personas: Persona schemas produced by a generation graph.
+        """
+        for persona in personas:
+            await self._personas_repository.create(
+                CreatePersonaSchema(
+                    interview_id=interview_id,
+                    demographic_state=persona.demographic_attributes,
+                    bio_description=persona.biography,
+                    is_verified=False,
+                ),
+            )

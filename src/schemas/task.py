@@ -6,13 +6,16 @@ Tasks represent background jobs or operations with status tracking and progress 
 
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Annotated, Any, Optional, Union
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Discriminator, Field
 
 from src.domains.task.app.constants import TaskStatus, TaskType
 from src.schemas.api_base import VerboseBase
-from src.schemas.persona import GeneratePersonasInputData
+from src.schemas.persona import (
+    GeneratePersonasInputData,
+    GenerateSinglePersonaInputData,
+)
 
 if TYPE_CHECKING:
     from src.schemas.user import UserEntitySchema
@@ -22,11 +25,12 @@ class CreateTaskSchema(BaseModel):
     """Schema for creating a new task.
 
     Attributes:
-        type: Type of the task (e.g., data processing, report generation).
+        type: Type of the task (e.g., persona generation, report generation).
         status: Current status of the task execution.
         progress: Task completion progress as a float between 0.0 and 1.0.
         error_log: Optional error message if task execution failed.
-        input_params: Dictionary containing task input parameters and configuration.
+        input_params: Discriminated union of task-specific input schemas,
+            resolved via the ``task_type`` field.
         user_id: UUID of the user who created the task.
     """
 
@@ -34,7 +38,10 @@ class CreateTaskSchema(BaseModel):
     status: TaskStatus = TaskStatus.PENDING
     progress: float = Field(default=0, ge=0, le=1.0)
     error_log: Optional[str] = None
-    input_params: GeneratePersonasInputData
+    input_params: Annotated[
+        Union[GenerateSinglePersonaInputData, GeneratePersonasInputData],
+        Discriminator("task_type"),
+    ]
     user_id: uuid.UUID
 
 
