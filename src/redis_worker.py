@@ -19,6 +19,8 @@ from src.infrastructure.containers.domain import DomainContainer
 from src.infrastructure.db.redis.client import RedisClient
 from src.schemas.task import TaskSchema, UpdateTaskSchema
 
+_STARTED_PROGRESS = 0.1
+
 settings = AppConfigs.init()
 
 setup_logger(settings.logger.logging_config_file)
@@ -76,7 +78,7 @@ async def _process_task(
     """
     await task_service.update_task(
         task_id,
-        UpdateTaskSchema(status=TaskStatus.IN_PROGRESS),
+        UpdateTaskSchema(status=TaskStatus.IN_PROGRESS, progress=_STARTED_PROGRESS),
     )
     try:
         await task_executor.execute(task)

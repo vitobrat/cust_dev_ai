@@ -8,7 +8,7 @@ from src.infrastructure.containers.domain import DomainContainer
 def build_handler_registry(
     container: DomainContainer,
 ) -> dict[TaskType, TaskHandler]:
-    """Build a mapping of every ``TaskType`` to its handler instance.
+    """Build a mapping of implemented ``TaskType`` values to handler instances.
 
     Handler instances are resolved from the DI container.
 
@@ -23,8 +23,4 @@ def build_handler_registry(
         TaskType.PERSONAS_PIPELINE: persona_handler,
         TaskType.PERSONAS_GENERATION: persona_handler,
         TaskType.SINGLE_PERSONA_GENERATION: persona_handler,
-        TaskType.SUB_INTERVIEW_GENERATION: (
-            container.sub_interview.sub_interview_generation_handler()  # type: ignore[operator]
-        ),
-        TaskType.REPORT_GENERATION: container.interview.report_generation_handler(),  # type: ignore[operator]
     }

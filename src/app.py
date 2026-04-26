@@ -1,6 +1,4 @@
-"""FastAPI application entry point.
-claude --resume 6b17804a-5368-4558-90e1-9fd87563c371
-(редис клиент)"""
+"""FastAPI application entry point."""
 
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager

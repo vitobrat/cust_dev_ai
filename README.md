@@ -1,6 +1,41 @@
 # cust_dev_ai
 
-Async Python backend for AI-powered customer development interviews. Generates user personas via LangGraph agents, manages interviews and tasks, and exposes a RESTful API via FastAPI.
+Async Python backend for AI-powered customer development interviews. Generates
+user personas via LangGraph agents, manages interviews and tasks, and exposes a
+RESTful API via FastAPI.
+
+## System Context
+
+This repository is the main product backend in a multi-service system.
+
+Related service:
+
+- `/home/vito_brat/ml_service` — internal ML/vector-search microservice. It owns
+  Qdrant vector storage, Triton-based embedding generation, semantic search,
+  and RabbitMQ handlers for `embeddings.request` and `search.request`.
+
+Boundary between services:
+
+- `cust_dev_ai` owns product entities, user/interview/persona workflows,
+  PostgreSQL state, Redis task tracking, and LLM/LangGraph orchestration.
+- `ml_service` owns vector database and RAG retrieval infrastructure.
+- The intended integration mechanism is RabbitMQ request/reply.
+
+Current code status: this service contains a generic RabbitMQ client and
+RabbitMQ configuration, but no source-level calls to `ml_service` queues
+(`embeddings.request`, `search.request`) were found during the 2026-04-25 code
+pass. Treat the concrete end-to-end RAG producer flow as planned or external
+until producer code is added here.
+
+## Documentation Map
+
+- `README.md`: project overview, setup, API, and system context.
+- `PROJECT_CONTEXT.md`: tracked bootstrap context for future AI agents.
+- `AGENTS.md`: local Codex prompt; currently ignored by `.gitignore`.
+- `/home/vito_brat/ml_service/PROJECT_CONTEXT.md`: companion vector-search
+  service context.
+- `/home/vito_brat/ml_service/ARCHITECTURE.md`: detailed vector-search
+  architecture and RabbitMQ boundary.
 
 ## Tech Stack
 
@@ -58,7 +93,9 @@ GenerateSinglePersonaGraph
     → combines into a structured PersonaSchema
 ```
 
-All graphs extend `BaseGraph` (`src/infrastructure/graph/base_graph.py`), which wraps LangGraph's `StateGraph` and injects `LLMAdapter` and `BasePromptManager`.
+All graphs extend `BaseGraph` (`src/infrastructure/graph/base_graph.py`),
+which wraps LangGraph's `StateGraph` and injects `LLMAdapter` and
+`BasePromptManager`.
 
 ### API Endpoints
 
@@ -222,10 +259,13 @@ python3 -m pytest -vv tests/path/to/test_file.py::test_function_name
 
 ## Testing
 
-- **Integration tests** use `testcontainers` (PostgreSQL 16 Alpine); migrations are applied once per session, each test runs in a rolled-back transaction.
+- **Integration tests** use `testcontainers` (PostgreSQL 16 Alpine); migrations
+  are applied once per session, each test runs in a rolled-back transaction.
 - **Test data** is generated via `polyfactory` (`ModelFactory`).
-- **LLM is always mocked** via an `autouse` fixture (`override_llm`) that overrides `container.infrastructure.llm` — no real API calls in tests.
-- **Factory fixtures**: `*_factory` creates entities on demand; plain `*` fixtures (e.g. `user`, `persona`) create a single ready entity.
+- **LLM is always mocked** via an `autouse` fixture (`override_llm`) that
+  overrides `container.infrastructure.llm`; no real API calls in tests.
+- **Factory fixtures**: `*_factory` creates entities on demand; plain `*`
+  fixtures (e.g. `user`, `persona`) create a single ready entity.
 
 ## Code Style
 
