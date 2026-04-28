@@ -6,6 +6,10 @@ workers_number: 1
 persona:
   graph_recursion_limit: 100
 
+interview:
+  recursion_limit: 10
+  simulation_recursion_limit: 80
+
 postgres:
   pool_size: 5
   max_overflow: 10

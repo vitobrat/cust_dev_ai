@@ -15,6 +15,15 @@ from src.domains.interview.app.workers.handler import (
     ReportGenerationTaskHandler,
 )
 from src.domains.interview.db.postgres.repository import InterviewRepository
+from src.domains.interview.infrastructure.graph.interview_simulation import (
+    InterviewSimulationGraph,
+)
+from src.domains.interview.infrastructure.graph.pre_interview_preparation import (
+    PreInterviewPreparationGraph,
+)
+from src.domains.interview.infrastructure.prompt.prompt_manager import (
+    InterviewPromptManager,
+)
 from src.domains.persona.app.usecases.service import PersonaService
 from src.domains.persona.app.workers.handler import PersonaTaskHandler
 from src.domains.persona.db.postgres.repository import PersonaRepository
@@ -122,6 +131,9 @@ class InterviewContainer(containers.DeclarativeContainer):
 
     Attributes:
         interviews_repository: Factory for InterviewRepository instances.
+        prompt_builder: Singleton InterviewPromptManager for prompt templates.
+        pre_interview_preparation_graph: Factory for the first interview-stage graph.
+        interview_simulation_graph: Factory for the second interview-stage graph.
         interview_service: Factory for InterviewService instances.
     """
 
@@ -131,6 +143,27 @@ class InterviewContainer(containers.DeclarativeContainer):
     interviews_repository: InterviewRepository = providers.Factory(
         InterviewRepository,
         db_client=infrastructure.db_client,
+    )
+
+    prompt_builder: InterviewPromptManager = providers.Singleton(
+        InterviewPromptManager,
+        prompts_dir=config.interview.prompts_dir,
+    )
+
+    pre_interview_preparation_graph: PreInterviewPreparationGraph = providers.Factory(
+        PreInterviewPreparationGraph,
+        prompt_builder=prompt_builder,
+        llm_adapter=infrastructure.llm_adapter,
+        recursion_limit=config.interview.recursion_limit,
+        langfuse_handler=infrastructure.langfuse_handler,
+    )
+
+    interview_simulation_graph: InterviewSimulationGraph = providers.Factory(
+        InterviewSimulationGraph,
+        prompt_builder=prompt_builder,
+        llm_adapter=infrastructure.llm_adapter,
+        recursion_limit=config.interview.simulation_recursion_limit,
+        langfuse_handler=infrastructure.langfuse_handler,
     )
 
     interview_service: InterviewService = providers.Factory(
@@ -257,6 +290,7 @@ class DomainContainer(containers.DeclarativeContainer):
 
     interview: InterviewContainer = providers.Container(
         InterviewContainer,
+        config=config,
         infrastructure=infrastructure,
     )
 

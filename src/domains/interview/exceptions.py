@@ -23,3 +23,19 @@ class InterviewUpdateFailed(InterviewNotFound):
 
 class InterviewDeletionFailed(InterviewNotFound):
     """Raised when interview deletion fails because the entity does not exist."""
+
+
+class PreInterviewPreparationDraftNodeError(InterviewError):
+    """Raised when a draft pre-interview preparation graph node is executed."""
+
+
+class InterviewSimulationDraftNodeError(InterviewError):
+    """Raised when a draft interview simulation graph node is executed."""
+
+
+class PostInterviewUpdateDraftNodeError(InterviewError):
+    """Raised when a draft post-interview update graph node is executed."""
+
+
+class InterviewOrchestratorDraftNodeError(InterviewError):
+    """Raised when a draft interview orchestration graph node is executed."""
