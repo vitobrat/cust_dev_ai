@@ -6,11 +6,14 @@ Interviews represent customer development sessions with associated personas and 
 
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from src.configs.consts import URL_MAX_LENGTH
+from src.configs.consts import (
+    INTERVIEW_ORCHESTRATOR_MAX_BATCH_SIZE,
+    URL_MAX_LENGTH,
+)
 from src.schemas.api_base import VerboseBase
 
 if TYPE_CHECKING:
@@ -41,6 +44,24 @@ class UpdateInterviewSchema(BaseModel):
     """
 
     report_content_url: Optional[str] = Field(default=None, max_length=URL_MAX_LENGTH)
+
+
+class InterviewSimulationTaskInputData(BaseModel):
+    """Redis task input for running the full custdev interview simulation cycle.
+
+    The task references an existing interview and loads its generated personas
+    from PostgreSQL before running the interview orchestration graph.
+    """
+
+    task_type: Literal["interview_simulation"] = "interview_simulation"
+    interview_id: uuid.UUID
+    rewritten_user_request: str = Field(..., min_length=1)
+    segment_name: str = Field(..., min_length=1)
+    segment_description: str = Field(..., min_length=1)
+    batch_size: int = Field(default=3, ge=1, le=INTERVIEW_ORCHESTRATOR_MAX_BATCH_SIZE)
+    max_iterations_per_interview: int = Field(default=8, ge=1)
+    user_controlled_knowledge_context: str = ""
+    allow_external_search: bool = True
 
 
 class InterviewEntitySchema(VerboseBase, CreateInterviewSchema):

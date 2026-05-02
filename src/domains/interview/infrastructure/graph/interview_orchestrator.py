@@ -28,6 +28,7 @@ from src.domains.interview.schemas.common import (
     InterviewPersonaContext,
     InterviewReport,
     PreInterviewPlan,
+    SimulatedInterviewSession,
 )
 from src.domains.interview.schemas.interview_orchestration import (
     IndustryDescriptionGeneration,
@@ -203,6 +204,14 @@ class InterviewOrchestratorGraph(
         self._logger.debug("Interview simulation produced one report for the current batch.")
         return {
             "interview_reports": [graph_output.interview_report],
+            "interview_sessions": [
+                SimulatedInterviewSession(
+                    persona_context=self._get_active_persona_context(state),
+                    chat_history=graph_output.chat_history,
+                    interviewer_notes=graph_output.interviewer_notes,
+                    interview_report=graph_output.interview_report,
+                ),
+            ],
         }
 
     async def _run_post_interview_update(

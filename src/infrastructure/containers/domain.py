@@ -12,11 +12,17 @@ from dependency_injector import containers, providers
 from src.configs.config import AppConfigs
 from src.domains.interview.app.usecases.service import InterviewService
 from src.domains.interview.app.workers.handler import (
-    ReportGenerationTaskHandler,
+    InterviewSimulationTaskHandler,
 )
 from src.domains.interview.db.postgres.repository import InterviewRepository
+from src.domains.interview.infrastructure.graph.interview_orchestrator import (
+    InterviewOrchestratorGraph,
+)
 from src.domains.interview.infrastructure.graph.interview_simulation import (
     InterviewSimulationGraph,
+)
+from src.domains.interview.infrastructure.graph.post_interview_update import (
+    PostInterviewUpdateGraph,
 )
 from src.domains.interview.infrastructure.graph.pre_interview_preparation import (
     PreInterviewPreparationGraph,
@@ -134,6 +140,8 @@ class InterviewContainer(containers.DeclarativeContainer):
         prompt_builder: Singleton InterviewPromptManager for prompt templates.
         pre_interview_preparation_graph: Factory for the first interview-stage graph.
         interview_simulation_graph: Factory for the second interview-stage graph.
+        post_interview_update_graph: Factory for the third interview-stage graph.
+        interview_orchestrator_graph: Factory for the full interview simulation graph.
         interview_service: Factory for InterviewService instances.
     """
 
@@ -142,6 +150,11 @@ class InterviewContainer(containers.DeclarativeContainer):
 
     interviews_repository: InterviewRepository = providers.Factory(
         InterviewRepository,
+        db_client=infrastructure.db_client,
+    )
+
+    sub_interviews_repository: SubInterviewRepository = providers.Factory(
+        SubInterviewRepository,
         db_client=infrastructure.db_client,
     )
 
@@ -166,13 +179,33 @@ class InterviewContainer(containers.DeclarativeContainer):
         langfuse_handler=infrastructure.langfuse_handler,
     )
 
+    post_interview_update_graph: PostInterviewUpdateGraph = providers.Factory(
+        PostInterviewUpdateGraph,
+        prompt_builder=prompt_builder,
+        llm_adapter=infrastructure.llm_adapter,
+        recursion_limit=config.interview.recursion_limit,
+        langfuse_handler=infrastructure.langfuse_handler,
+    )
+
+    interview_orchestrator_graph: InterviewOrchestratorGraph = providers.Factory(
+        InterviewOrchestratorGraph,
+        pre_interview_preparation_graph=pre_interview_preparation_graph,
+        interview_simulation_graph=interview_simulation_graph,
+        post_interview_update_graph=post_interview_update_graph,
+        prompt_builder=prompt_builder,
+        llm_adapter=infrastructure.llm_adapter,
+        langfuse_handler=infrastructure.langfuse_handler,
+    )
+
     interview_service: InterviewService = providers.Factory(
         InterviewService,
         interviews_repository=interviews_repository,
+        interview_orchestrator_graph=interview_orchestrator_graph,
+        sub_interviews_repository=sub_interviews_repository,
     )
 
-    report_generation_handler: ReportGenerationTaskHandler = providers.Singleton(
-        ReportGenerationTaskHandler,
+    interview_simulation_task_handler: InterviewSimulationTaskHandler = providers.Singleton(
+        InterviewSimulationTaskHandler,
         interview_service=interview_service,
     )
 

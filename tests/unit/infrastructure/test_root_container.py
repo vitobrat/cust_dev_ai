@@ -7,8 +7,14 @@ from unittest.mock import MagicMock
 from langfuse.langchain import CallbackHandler
 
 from src.configs.consts import PROJECT_ROOT
+from src.domains.interview.infrastructure.graph.interview_orchestrator import (
+    InterviewOrchestratorGraph,
+)
 from src.domains.interview.infrastructure.graph.interview_simulation import (
     InterviewSimulationGraph,
+)
+from src.domains.interview.infrastructure.graph.post_interview_update import (
+    PostInterviewUpdateGraph,
 )
 from src.domains.interview.infrastructure.graph.pre_interview_preparation import (
     PreInterviewPreparationGraph,
@@ -71,13 +77,22 @@ def test_interview_container_exposes_pre_interview_preparation_graph(mock_llm: L
     with (
         container.infrastructure.llm.override(mock_llm),
         container.infrastructure.langfuse_handler.override(fake_handler),
+        container.interview.interviews_repository.override(MagicMock()),  # type: ignore[attr-defined]
+        container.interview.sub_interviews_repository.override(MagicMock()),  # type: ignore[attr-defined]
     ):
         prompt_builder = container.interview.prompt_builder()
         pre_interview_graph = container.interview.pre_interview_preparation_graph()
         simulation_graph = container.interview.interview_simulation_graph()
+        post_interview_graph = container.interview.post_interview_update_graph()
+        orchestrator_graph = container.interview.interview_orchestrator_graph()
+        task_handler = container.interview.interview_simulation_task_handler()
 
     assert isinstance(prompt_builder, InterviewPromptManager)
     assert isinstance(pre_interview_graph, PreInterviewPreparationGraph)
     assert isinstance(simulation_graph, InterviewSimulationGraph)
+    assert isinstance(post_interview_graph, PostInterviewUpdateGraph)
+    assert isinstance(orchestrator_graph, InterviewOrchestratorGraph)
     assert pre_interview_graph._prompt_builder is prompt_builder
     assert simulation_graph._prompt_builder is prompt_builder
+    assert post_interview_graph._prompt_builder is prompt_builder
+    assert task_handler._interview_service is not None

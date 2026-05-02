@@ -1,23 +1,31 @@
-"""Report generation task handler for the Redis worker."""
+"""Interview simulation task handler for the Redis worker."""
 
 from src.domains.interview.app.usecases.service import InterviewService
+from src.domains.task.app.constants import TaskType
+from src.schemas.interview import InterviewSimulationTaskInputData
 from src.schemas.task import TaskSchema
 
 
-class ReportGenerationTaskHandler:
-    """Handle ``REPORT_GENERATION`` tasks.
-
-    Attributes:
-        _interview_service: Service executing report generation logic.
-    """
+class InterviewSimulationTaskHandler:
+    """Handle the single interview-domain Redis task: full interview simulation."""
 
     def __init__(self, interview_service: InterviewService) -> None:
         self._interview_service = interview_service
 
     async def execute(self, task: TaskSchema) -> None:
-        """Execute report generation for the given task.
+        """Execute a full interview simulation task.
 
         Args:
-            task: Dequeued task payload.
+            task: Dequeued Redis task payload.
+
+        Raises:
+            ValueError: If task type or input payload does not match this handler.
         """
-        await self._interview_service.generate(task.input_params)  # type: ignore[attr-defined]
+        if task.type is not TaskType.INTERVIEW_SIMULATION:
+            raise ValueError(f"InterviewSimulationTaskHandler cannot execute task type {task.type.value}.")
+
+        task_input = task.input_params
+        if not isinstance(task_input, InterviewSimulationTaskInputData):
+            raise ValueError("Interview simulation task payload has invalid input_params.")
+
+        await self._interview_service.simulate_interviews(task_input)

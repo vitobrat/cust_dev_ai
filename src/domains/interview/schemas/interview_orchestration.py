@@ -10,6 +10,7 @@ from src.domains.interview.schemas.common import (
     InterviewPersonaContext,
     InterviewReport,
     PreInterviewPlan,
+    SimulatedInterviewSession,
 )
 
 
@@ -43,6 +44,7 @@ class InterviewOrchestrationSchema(TypedDict, total=False):
     pre_interview_plan: PreInterviewPlan
     active_persona_context: InterviewPersonaContext
     interview_reports: Annotated[list[InterviewReport], operator.add]
+    interview_sessions: Annotated[list[SimulatedInterviewSession], operator.add]
     final_pre_interview_plan: PreInterviewPlan
 
 
@@ -50,6 +52,7 @@ class InterviewOrchestrationOutputSchema(TypedDict):
     """Filtered output emitted by the full interview simulation graph."""
 
     interview_reports: list[InterviewReport]
+    interview_sessions: list[SimulatedInterviewSession]
     final_pre_interview_plan: PreInterviewPlan
 
 
@@ -57,4 +60,5 @@ class InterviewOrchestrationOutputData(BaseModel):
     """Validated output returned by ``InterviewOrchestratorGraph.process``."""
 
     interview_reports: list[InterviewReport]
+    interview_sessions: list[SimulatedInterviewSession]
     final_pre_interview_plan: PreInterviewPlan

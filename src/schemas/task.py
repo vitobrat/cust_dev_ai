@@ -6,22 +6,24 @@ Tasks represent background jobs or operations with status tracking and progress 
 
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING, Annotated, Any, Optional, Union
+from typing import TYPE_CHECKING, Annotated, Any, Optional, TypeAlias, Union
 
 from pydantic import BaseModel, ConfigDict, Discriminator, Field
 
 from src.domains.task.app.constants import TaskStatus, TaskType
 from src.schemas.api_base import VerboseBase
+from src.schemas.interview import InterviewSimulationTaskInputData
 from src.schemas.persona import (
     GeneratePersonasTaskInputData,
     GenerateSinglePersonaTaskInputData,
     PersonasPipelineTaskInputData,
 )
 
-TaskInputParams = Union[
+TaskInputParams: TypeAlias = Union[
     PersonasPipelineTaskInputData,
     GenerateSinglePersonaTaskInputData,
     GeneratePersonasTaskInputData,
+    InterviewSimulationTaskInputData,
 ]
 
 if TYPE_CHECKING:
@@ -45,10 +47,7 @@ class CreateTaskSchema(BaseModel):
     status: TaskStatus = TaskStatus.PENDING
     progress: float = Field(default=0, ge=0, le=1.0)
     error_log: Optional[str] = None
-    input_params: Annotated[
-        Union[PersonasPipelineTaskInputData, GenerateSinglePersonaTaskInputData, GeneratePersonasTaskInputData],
-        Discriminator("task_type"),
-    ]
+    input_params: Annotated[TaskInputParams, Discriminator("task_type")]
     user_id: uuid.UUID
 
 

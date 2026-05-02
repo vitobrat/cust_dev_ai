@@ -74,3 +74,12 @@ class InterviewReport(BaseModel):
     is_successful: bool
     success_score: float = Field(..., ge=0, le=1)
     success_reasoning: str = Field(..., min_length=1)
+
+
+class SimulatedInterviewSession(BaseModel):
+    """Full result of one simulated persona interview."""
+
+    persona_context: InterviewPersonaContext
+    chat_history: list[InterviewMessage] = Field(..., min_length=1)
+    interviewer_notes: InterviewNotes
+    interview_report: InterviewReport

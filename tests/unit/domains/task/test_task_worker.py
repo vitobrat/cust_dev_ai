@@ -22,11 +22,13 @@ class _StopWorkerOnUpdate:
         self._stop_event.set()
 
 
-async def test_registry_registers_only_implemented_persona_task_types() -> None:
+async def test_registry_registers_only_implemented_task_types() -> None:
     """Incomplete task types must not be registered as executable handlers."""
     persona_task_handler = MagicMock()
+    interview_task_handler = MagicMock()
     container = MagicMock()
     container.persona.persona_task_handler.return_value = persona_task_handler
+    container.interview.interview_simulation_task_handler.return_value = interview_task_handler
 
     registry = build_handler_registry(container)
 
@@ -34,6 +36,7 @@ async def test_registry_registers_only_implemented_persona_task_types() -> None:
         TaskType.PERSONAS_PIPELINE: persona_task_handler,
         TaskType.PERSONAS_GENERATION: persona_task_handler,
         TaskType.SINGLE_PERSONA_GENERATION: persona_task_handler,
+        TaskType.INTERVIEW_SIMULATION: interview_task_handler,
     }
 
 

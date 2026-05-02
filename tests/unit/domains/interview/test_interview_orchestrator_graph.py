@@ -21,6 +21,7 @@ from src.domains.interview.infrastructure.prompt.prompt_manager import (
     InterviewPromptManager,
 )
 from src.domains.interview.schemas.common import (
+    InterviewMessage,
     InterviewNotes,
     InterviewPersonaContext,
     InterviewReport,
@@ -137,7 +138,16 @@ def _mock_stage_graphs(
     interview_simulation_graph.process = AsyncMock(
         return_value=InterviewSimulationOutputData(
             interview_report=interview_report,
-            chat_history=[],
+            chat_history=[
+                InterviewMessage(
+                    speaker="interviewer",
+                    content="Alex, tell me about the last failed discovery call.",
+                ),
+                InterviewMessage(
+                    speaker="persona",
+                    content="Alex: the last call produced scattered notes.",
+                ),
+            ],
             interviewer_notes=InterviewNotes(),
         ),
     )
@@ -310,12 +320,22 @@ async def test_run_pre_interview_preparation_delegates_to_first_stage_graph() ->
 
 async def test_run_interview_simulation_delegates_to_second_stage_graph() -> None:
     """Each batch item should call the interview graph and append one report."""
+    chat_history = [
+        InterviewMessage(
+            speaker="interviewer",
+            content="Alex, tell me about the last failed discovery call.",
+        ),
+        InterviewMessage(
+            speaker="persona",
+            content="Alex: the last call produced scattered notes.",
+        ),
+    ]
     interview_simulation_graph = MagicMock()
     interview_simulation_graph.process = AsyncMock(
         return_value=InterviewSimulationOutputData(
             interview_report=_interview_report("Alex"),
-            chat_history=[],
-            interviewer_notes=InterviewNotes(),
+            chat_history=chat_history,
+            interviewer_notes=InterviewNotes(key_facts=["Alex owns discovery calls."]),
         ),
     )
     state = InterviewOrchestrationSchema(
@@ -327,6 +347,10 @@ async def test_run_interview_simulation_delegates_to_second_stage_graph() -> Non
     node_result = await _graph(interview_simulation_graph=interview_simulation_graph)._run_interview_simulation(state)
 
     assert node_result["interview_reports"] == [_interview_report("Alex")]
+    assert node_result["interview_sessions"][0].interview_report == _interview_report("Alex")
+    assert node_result["interview_sessions"][0].chat_history == chat_history
+    assert node_result["interview_sessions"][0].interviewer_notes.key_facts == ["Alex owns discovery calls."]
+    assert node_result["interview_sessions"][0].persona_context == _persona("Alex")
     call_args = interview_simulation_graph.process.await_args
     assert call_args is not None
     call_input = call_args.args[0]
@@ -420,8 +444,26 @@ async def test_interview_orchestrator_process_runs_one_persona_cycle() -> None:
         ),
     )
 
-    assert graph_output.interview_reports == [interview_report]
-    assert graph_output.final_pre_interview_plan == updated_plan
+    assert (
+        graph_output.interview_reports,
+        graph_output.interview_sessions[0].interview_report,
+        graph_output.interview_sessions[0].chat_history,
+        graph_output.final_pre_interview_plan,
+    ) == (
+        [interview_report],
+        interview_report,
+        [
+            InterviewMessage(
+                speaker="interviewer",
+                content="Alex, tell me about the last failed discovery call.",
+            ),
+            InterviewMessage(
+                speaker="persona",
+                content="Alex: the last call produced scattered notes.",
+            ),
+        ],
+        updated_plan,
+    )
     pre_call_args = stage_graphs.pre_interview.process.await_args
     interview_call_args = stage_graphs.interview_simulation.process.await_args
     post_call_args = stage_graphs.post_interview_update.process.await_args

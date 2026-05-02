@@ -13,6 +13,7 @@ class TaskType(Enum):
         PERSONAS_PIPELINE: Full pipeline — segment search followed by batch persona generation.
         PERSONAS_GENERATION: Task for batch generation of multiple user personas.
         SINGLE_PERSONA_GENERATION: Task for generating a single user persona.
+        INTERVIEW_SIMULATION: Task for running simulated custdev interviews over existing personas.
         SUB_INTERVIEW_GENERATION: Task for generating sub-interview questions and flows.
         REPORT_GENERATION: Task for generating final interview reports.
     """
@@ -20,6 +21,7 @@ class TaskType(Enum):
     PERSONAS_PIPELINE = "personas_pipeline"
     PERSONAS_GENERATION = "personas_generation"
     SINGLE_PERSONA_GENERATION = "single_persona_generation"
+    INTERVIEW_SIMULATION = "interview_simulation"
     SUB_INTERVIEW_GENERATION = "sub_interview_generation"
     REPORT_GENERATION = "report_generation"
 
