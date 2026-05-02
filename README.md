@@ -1,8 +1,8 @@
 # cust_dev_ai
 
 Async Python backend for AI-powered customer development interviews. Generates
-user personas via LangGraph agents, manages interviews and tasks, and exposes a
-RESTful API via FastAPI.
+user personas and simulated custdev interviews via LangGraph agents, manages
+interviews and tasks, and exposes a RESTful API via FastAPI.
 
 ## System Context
 
@@ -17,7 +17,8 @@ Related service:
 Boundary between services:
 
 - `cust_dev_ai` owns product entities, user/interview/persona workflows,
-  PostgreSQL state, Redis task tracking, and LLM/LangGraph orchestration.
+  PostgreSQL state, Redis task tracking, simulated-interview persistence, and
+  LLM/LangGraph orchestration.
 - `ml_service` owns vector database and RAG retrieval infrastructure.
 - The intended integration mechanism is RabbitMQ request/reply.
 
@@ -30,7 +31,7 @@ until producer code is added here.
 ## Documentation Map
 
 - `README.md`: project overview, setup, API, and system context.
-- `PROJECT_CONTEXT.md`: tracked bootstrap context for future AI agents.
+- `PROJECT_CONTEXT.md`: local bootstrap context for future AI agents.
 - `AGENTS.md`: local Codex prompt; currently ignored by `.gitignore`.
 - `/home/vito_brat/ml_service/PROJECT_CONTEXT.md`: companion vector-search
   service context.
@@ -41,7 +42,7 @@ until producer code is added here.
 
 - **Web**: FastAPI 0.135, Uvicorn, Slowapi (rate limiting)
 - **AI/LLM**: LangChain 1.2, LangGraph 1.0, Instructor 1.14 (structured outputs), Langfuse 3.12 (observability)
-- **LLM Provider**: OpenRouter (configurable, default: `openai/gpt-oss-120b`)
+- **LLM Provider**: OpenRouter (configurable, dev default: `qwen/qwen3.5-27b`)
 - **Database**: PostgreSQL 16 + SQLAlchemy 2.0 (async) + Alembic
 - **DI**: dependency-injector 4.48
 - **Config**: OmegaConf + Pydantic Settings
@@ -62,9 +63,9 @@ RootContainer
 | Domain | Table | Description |
 |---|---|---|
 | `user` | `users` | Root entity; owns interviews and tasks |
-| `interview` | `interviews` | Customer development interview session |
+| `interview` | `interviews` | Customer development interview and simulation orchestration |
 | `persona` | `personas` | AI-generated user segment (with JSONB demographic state) |
-| `sub_interview` | `sub_interviews` | Conversational sub-session inside an interview |
+| `sub_interview` | `sub_interviews` | Persisted simulated dialogue session inside an interview |
 | `task` | `tasks` | Background job tracking (progress, status, error log) |
 
 Each domain contains:
@@ -74,7 +75,7 @@ Each domain contains:
 - `app/usecases/service.py` — Application service (business logic)
 - `exceptions.py` — Domain-specific exceptions
 
-The `persona` domain additionally has:
+The `persona` and `interview` domains additionally have:
 
 - `infrastructure/graph/` — LangGraph agents
 - `infrastructure/prompt/` — Prompt templates and manager
@@ -91,6 +92,31 @@ GeneratePersonasGraph  (map-reduce)
 GenerateSinglePersonaGraph
     → generates demographic attributes, biography, and experiences in parallel
     → combines into a structured PersonaSchema
+```
+
+### LangGraph Interview Simulation Pipeline
+
+```
+InterviewOrchestratorGraph
+    → generates compact industry context from the task input
+    → runs PreInterviewPreparationGraph once
+    → runs InterviewSimulationGraph in bounded persona batches
+    → runs PostInterviewUpdateGraph after each batch
+    → returns all per-persona interview reports and final interview plan
+
+PreInterviewPreparationGraph
+    → studies segment and industry context
+    → performs parallel concern/risk/goal/ideal-result analysis
+    → produces the pre-interview plan
+
+InterviewSimulationGraph
+    → generates interviewer questions
+    → generates simulated persona answers
+    → preserves validator notes before final analysis
+    → produces one interview report and full dialogue history
+
+PostInterviewUpdateGraph
+    → updates the pre-interview plan from the latest batch reports only
 ```
 
 All graphs extend `BaseGraph` (`src/infrastructure/graph/base_graph.py`),
@@ -137,6 +163,10 @@ All endpoints follow the same response envelope:
 | GET | `/api/v1/tasks/{id}` | Get task by ID |
 | PUT | `/api/v1/tasks/{id}` | Update task |
 | DELETE | `/api/v1/tasks/{id}` | Delete task |
+| POST | `/api/v1/tasks/personas_pipeline_task` | Register persona pipeline task in Redis |
+| POST | `/api/v1/tasks/generate_single_persona_task` | Register single-persona generation task in Redis |
+| POST | `/api/v1/tasks/generate_personas_task` | Register batch persona generation task in Redis |
+| POST | `/api/v1/tasks/interview_simulation_task` | Register full interview simulation task in Redis |
 
 ## Configuration
 
@@ -151,17 +181,31 @@ log_level: "DEBUG"
 workers_number: 1
 
 persona:
-  prompts_dir: "src/domains/persona/infrastructure/prompt"
-  graph_recursion_limit: 5
+  graph_recursion_limit: 100
+
+interview:
+  recursion_limit: 10
+  simulation_recursion_limit: 80
 
 postgres:
   pool_size: 5
   max_overflow: 10
   echo: false
 
+redis:
+  host: redis
+  port: 6379
+  db: 0
+  max_connections: 10
+
+rabbitmq:
+  host: "rabbitmq"
+  port: 5672
+  vhost: "ml"
+
 llm:
-  model_name: "openai/gpt-oss-120b"
-  base_url: "https://openrouter.ai/api/v1/chat/completions"
+  model_name: "qwen/qwen3.5-27b"
+  base_url: "https://openrouter.ai/api/v1"
   temperature: 0.1
   max_tokens: 4096
 ```
@@ -174,6 +218,11 @@ POSTGRES_PASSWORD=
 POSTGRES_HOST=
 POSTGRES_PORT=5432
 POSTGRES_DB=
+
+REDIS_PASSWORD=
+
+RABBITMQ_USER=
+RABBITMQ_PASSWORD=
 
 LANGFUSE_BASE_URL=
 LANGFUSE_PUBLIC_KEY=
@@ -193,7 +242,7 @@ LLM_API_KEY=
 ### Run with Docker Compose
 
 ```bash
-# Start PostgreSQL + app
+# Start PostgreSQL + Redis + app + Redis worker
 make up
 
 # View logs
@@ -304,7 +353,7 @@ cust_dev_ai/
 │   │   └── prompt/                  # BasePromptManager
 │   └── domains/
 │       ├── user/
-│       ├── interview/
+│       ├── interview/               # + LangGraph interview simulation agents + prompt templates
 │       ├── persona/                 # + LangGraph agents + prompt templates
 │       ├── sub_interview/
 │       └── task/

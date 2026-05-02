@@ -46,9 +46,6 @@ from src.domains.persona.infrastructure.prompt.prompt_manager import (
     PersonaPromptManager,
 )
 from src.domains.sub_interview.app.usecases.service import SubInterviewService
-from src.domains.sub_interview.app.workers.handler import (
-    SubInterviewGenerationTaskHandler,
-)
 from src.domains.sub_interview.db.postgres.repository import (
     SubInterviewRepository,
 )
@@ -214,6 +211,8 @@ class SubInterviewContainer(containers.DeclarativeContainer):
     """Dependency injection container for SubInterview domain components.
 
     Manages the repository and service layer for sub-interview entities.
+    Simulated interview sessions are persisted here by ``InterviewService``;
+    there is no standalone Redis worker handler for this reserved domain yet.
 
     Attributes:
         sub_interviews_repository: Factory for SubInterviewRepository instances.
@@ -231,11 +230,6 @@ class SubInterviewContainer(containers.DeclarativeContainer):
     sub_interview_service: SubInterviewService = providers.Factory(
         SubInterviewService,
         sub_interviews_repository=sub_interviews_repository,
-    )
-
-    sub_interview_generation_handler: SubInterviewGenerationTaskHandler = providers.Singleton(
-        SubInterviewGenerationTaskHandler,
-        sub_interview_service=sub_interview_service,
     )
 
 

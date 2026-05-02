@@ -20,13 +20,13 @@ if TYPE_CHECKING:
 class TasksOrm(Base):
     """ORM model representing an asynchronous background task.
 
-    Tasks track long-running operations such as persona generation,
-    sub-interview generation, and report generation. Each task has a type,
-    status, progress indicator, and optional error logging.
+    Tasks track long-running operations such as persona generation and
+    full interview simulation. Each task has a type, status, progress
+    indicator, and optional error logging.
 
     Attributes:
         id: Unique identifier (UUID).
-        type: Type of task (persona_generation, sub_interview_generation, report_generation).
+        type: Type of task (for example, personas_generation or interview_simulation).
         status: Current status of the task (created, pending, in_progress, completed, failed, etc.).
         progress: Task completion progress as a float (0.0 to 1.0).
         error_log: Optional error message or stack trace if the task failed.
