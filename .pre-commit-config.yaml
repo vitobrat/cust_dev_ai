@@ -71,6 +71,7 @@ repos:
     rev: 1.0.0
     hooks:
       - id: mdformat
+        exclude: ^src/domains/.*/infrastructure/prompt/.*_output_example\.md$
 
   - repo: https://github.com/kynan/nbstripout
     rev: 0.9.1

@@ -8,7 +8,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
 from src.configs.consts import (
     INTERVIEW_ORCHESTRATOR_MAX_BATCH_SIZE,
@@ -31,6 +31,7 @@ class CreateInterviewSchema(BaseModel):
     """
 
     report_content_url: Optional[str] = Field(default=None, max_length=URL_MAX_LENGTH)
+    final_report: Optional[dict[str, JsonValue]] = None
     user_id: uuid.UUID
 
 
@@ -44,6 +45,7 @@ class UpdateInterviewSchema(BaseModel):
     """
 
     report_content_url: Optional[str] = Field(default=None, max_length=URL_MAX_LENGTH)
+    final_report: Optional[dict[str, JsonValue]] = None
 
 
 class InterviewSimulationTaskInputData(BaseModel):
@@ -62,6 +64,13 @@ class InterviewSimulationTaskInputData(BaseModel):
     max_iterations_per_interview: int = Field(default=8, ge=1)
     user_controlled_knowledge_context: str = ""
     allow_external_search: bool = True
+
+
+class FinalReportGenerationTaskInputData(BaseModel):
+    """Redis task input for generating the final analytics report from stored interviews."""
+
+    task_type: Literal["report_generation"] = "report_generation"
+    interview_id: uuid.UUID
 
 
 class InterviewEntitySchema(VerboseBase, CreateInterviewSchema):

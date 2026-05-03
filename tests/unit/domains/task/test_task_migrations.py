@@ -15,3 +15,14 @@ def test_interview_simulation_task_type_has_postgres_enum_migration() -> None:
 
     assert "ALTER TYPE tasktype ADD VALUE" in migration_payload
     assert "INTERVIEW_SIMULATION" in migration_payload
+
+
+def test_final_report_storage_has_postgres_migration() -> None:
+    """The interview final_report JSONB column must be added by migration."""
+    migration_payload = "\n".join(
+        migration_path.read_text(encoding="utf-8") for migration_path in sorted(_MIGRATIONS_DIR.glob("*.py"))
+    )
+
+    assert 'op.add_column(\n        "interviews",' in migration_payload
+    assert '"final_report"' in migration_payload
+    assert "JSONB" in migration_payload

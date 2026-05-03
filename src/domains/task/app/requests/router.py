@@ -7,6 +7,9 @@ from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, Query, Response, status
 
 from src.configs.log.logger import get_logger
+from src.domains.task.app.requests.final_report_router import (
+    router as final_report_router,
+)
 from src.domains.task.app.requests.interview_simulation_schema import (
     PostInterviewSimulationTaskRequest,
 )
@@ -39,6 +42,7 @@ router = APIRouter(
     prefix="/tasks",
     tags=["tasks"],
 )
+router.include_router(final_report_router)
 
 
 @router.post(

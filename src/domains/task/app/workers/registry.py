@@ -20,9 +20,11 @@ def build_handler_registry(
     """
     persona_handler = container.persona.persona_task_handler()  # type: ignore[operator]
     interview_handler = container.interview.interview_simulation_task_handler()  # type: ignore[operator]
+    final_report_handler = container.interview.final_report_generation_task_handler()  # type: ignore[operator]
     return {
         TaskType.PERSONAS_PIPELINE: persona_handler,
         TaskType.PERSONAS_GENERATION: persona_handler,
         TaskType.SINGLE_PERSONA_GENERATION: persona_handler,
         TaskType.INTERVIEW_SIMULATION: interview_handler,
+        TaskType.REPORT_GENERATION: final_report_handler,
     }

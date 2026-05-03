@@ -172,6 +172,7 @@ All endpoints follow the same response envelope:
 | POST | `/api/v1/tasks/generate_single_persona_task` | Register single-persona generation task in Redis |
 | POST | `/api/v1/tasks/generate_personas_task` | Register batch persona generation task in Redis |
 | POST | `/api/v1/tasks/interview_simulation_task` | Register full interview simulation task in Redis |
+| POST | `/api/v1/tasks/generate_final_report_task` | Register final interview report generation task in Redis |
 
 ## Configuration
 

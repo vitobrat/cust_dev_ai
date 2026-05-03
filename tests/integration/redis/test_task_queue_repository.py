@@ -12,6 +12,7 @@ import pytest
 from src.domains.task.app.constants import TaskStatus, TaskType
 from src.domains.task.db.redis.repository import TaskQueueRepository
 from src.domains.task.exceptions import TaskQueueError
+from src.schemas.interview import FinalReportGenerationTaskInputData
 from src.schemas.persona import GeneratePersonasTaskInputData
 from src.schemas.task import TaskSchema
 
@@ -113,6 +114,7 @@ class TestTaskQueueRepositoryDequeue:
             status=TaskStatus.IN_PROGRESS,
             progress=0.5,
             error_log="partial failure",
+            input_params=FinalReportGenerationTaskInputData(interview_id=uuid.uuid4()),
         )
         await task_queue_repository.enqueue(task)
 

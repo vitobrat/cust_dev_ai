@@ -16,6 +16,14 @@ from src.domains.interview.schemas.common import (
     PreInterviewPlan,
     SimulatedInterviewSession,
 )
+from src.domains.interview.schemas.final_report import (
+    FinalInterviewReport,
+    FinalReportConclusion,
+    FinalReportCoreSections,
+    FinalReportOpening,
+    FinalReportPlanningAnalysis,
+    FinalReportSection,
+)
 from src.domains.interview.schemas.interview_orchestration import (
     InterviewOrchestrationOutputData,
 )
@@ -38,6 +46,7 @@ from src.domains.user.db.postgres.repository import UserRepository
 from src.infrastructure.db.postgres.client import DatabaseClient
 from src.schemas.interview import (
     CreateInterviewSchema,
+    FinalReportGenerationTaskInputData,
     InterviewSimulationTaskInputData,
 )
 from src.schemas.persona import CreatePersonaSchema
@@ -138,6 +147,42 @@ def _interview_report() -> InterviewReport:
     )
 
 
+def _final_report() -> FinalInterviewReport:
+    opening = FinalReportOpening(
+        title="Custdev interview report",
+        introduction="This report summarizes completed simulated interviews.",
+        report_scope="One persisted simulated interview.",
+    )
+    section = FinalReportSection(
+        section_kind="main_body",
+        title="Main report",
+        markdown_content="## Main report\n\nAlex has scattered notes.",
+        evidence_quotes=["My notes are scattered."],
+        data_points=["1 of 1 respondent mentioned scattered notes."],
+    )
+    return FinalInterviewReport(
+        opening=opening,
+        planning_analysis=FinalReportPlanningAnalysis(
+            report_goal="Explain customer evidence.",
+            writing_plan=["Quantify repeated pain."],
+        ),
+        core_sections=FinalReportCoreSections(
+            user_persona_map=section,
+            pain_points=section,
+            key_insights=section,
+            failure_risk_analysis=section,
+            recommendations=section,
+        ),
+        main_body=section,
+        conclusion=FinalReportConclusion(
+            key_takeaways=["Scattered notes are the strongest signal."],
+            conclusion="Validate budget ownership next.",
+        ),
+        markdown_content="# Custdev interview report\n\n## Main report\n\nAlex has scattered notes.",
+        source_interview_count=1,
+    )
+
+
 def _demographic_persona() -> DemographicAttributePersona:
     return DemographicAttributePersona(
         personal_info_block=PersonalInfoBlock(
@@ -187,3 +232,37 @@ async def test_interview_service_persists_simulated_session_payload(db_client: D
     assert sub_interviews[0].status == SubInterviewStatus.COMPLETED
     assert payload["interview_report"] == _interview_report().model_dump(mode="json")
     assert payload["chat_history"][1]["content"] == "My notes are scattered after calls."
+    assert payload["rewritten_user_request"] == _task_input(persisted.interview_id).rewritten_user_request
+
+
+async def test_interview_service_persists_final_report_from_completed_sessions(db_client: DatabaseClient) -> None:
+    """The service should load completed session reports from DB and persist final_report JSONB."""
+    persisted = await _persist_interview_with_persona(db_client)
+    interview_repository = InterviewRepository(db_client)
+    sub_interviews_repository = SubInterviewRepository(db_client)
+    orchestrator_graph = MagicMock()
+    orchestrator_graph.process = AsyncMock(return_value=_graph_output(persisted.persona_id))
+    simulation_service = InterviewService(
+        interviews_repository=interview_repository,
+        interview_orchestrator_graph=orchestrator_graph,
+        sub_interviews_repository=sub_interviews_repository,
+    )
+    await simulation_service.simulate_interviews(_task_input(persisted.interview_id))
+    final_report_graph = MagicMock()
+    final_report_graph.process = AsyncMock(return_value=MagicMock(final_report=_final_report()))
+    report_service = InterviewService(
+        interviews_repository=interview_repository,
+        final_report_generation_graph=final_report_graph,
+    )
+
+    await report_service.generate_final_report(
+        FinalReportGenerationTaskInputData(interview_id=persisted.interview_id),
+    )
+
+    updated_interview = await interview_repository.get_by_id(persisted.interview_id)
+    graph_call = final_report_graph.process.await_args
+    assert graph_call is not None
+    graph_input = graph_call.args[0]
+    assert updated_interview is not None
+    assert updated_interview.final_report == _final_report().model_dump(mode="json")
+    assert graph_input.interview_sessions[0].interview_report == _interview_report()

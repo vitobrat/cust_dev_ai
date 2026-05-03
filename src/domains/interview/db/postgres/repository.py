@@ -46,6 +46,7 @@ class InterviewRepository(
         async with self._db_client.session() as session:
             interview = InterviewsOrm(
                 report_content_url=create_data.report_content_url,
+                final_report=create_data.final_report,
                 user_id=create_data.user_id,
             )
             session.add(interview)

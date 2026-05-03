@@ -12,7 +12,10 @@ from pydantic import BaseModel, ConfigDict, Discriminator, Field
 
 from src.domains.task.app.constants import TaskStatus, TaskType
 from src.schemas.api_base import VerboseBase
-from src.schemas.interview import InterviewSimulationTaskInputData
+from src.schemas.interview import (
+    FinalReportGenerationTaskInputData,
+    InterviewSimulationTaskInputData,
+)
 from src.schemas.persona import (
     GeneratePersonasTaskInputData,
     GenerateSinglePersonaTaskInputData,
@@ -24,6 +27,7 @@ TaskInputParams: TypeAlias = Union[
     GenerateSinglePersonaTaskInputData,
     GeneratePersonasTaskInputData,
     InterviewSimulationTaskInputData,
+    FinalReportGenerationTaskInputData,
 ]
 
 if TYPE_CHECKING:

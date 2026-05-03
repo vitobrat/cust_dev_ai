@@ -90,6 +90,7 @@ def test_interview_container_exposes_pre_interview_preparation_graph(mock_llm: L
         orchestrator_graph = container.interview.interview_orchestrator_graph()
         final_report_graph = container.interview.final_report_generation_graph()
         task_handler = container.interview.interview_simulation_task_handler()
+        final_report_task_handler = container.interview.final_report_generation_task_handler()
 
     assert isinstance(prompt_builder, InterviewPromptManager)
     assert isinstance(pre_interview_graph, PreInterviewPreparationGraph)
@@ -104,3 +105,4 @@ def test_interview_container_exposes_pre_interview_preparation_graph(mock_llm: L
         final_report_graph._prompt_builder,
     ) == (prompt_builder, prompt_builder, prompt_builder, prompt_builder)
     assert task_handler._interview_service is not None
+    assert final_report_task_handler._interview_service is not None

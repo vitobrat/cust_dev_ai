@@ -12,6 +12,7 @@ from dependency_injector import containers, providers
 from src.configs.config import AppConfigs
 from src.domains.interview.app.usecases.service import InterviewService
 from src.domains.interview.app.workers.handler import (
+    FinalReportGenerationTaskHandler,
     InterviewSimulationTaskHandler,
 )
 from src.domains.interview.db.postgres.repository import InterviewRepository
@@ -210,11 +211,17 @@ class InterviewContainer(containers.DeclarativeContainer):
         InterviewService,
         interviews_repository=interviews_repository,
         interview_orchestrator_graph=interview_orchestrator_graph,
+        final_report_generation_graph=final_report_generation_graph,
         sub_interviews_repository=sub_interviews_repository,
     )
 
     interview_simulation_task_handler: InterviewSimulationTaskHandler = providers.Singleton(
         InterviewSimulationTaskHandler,
+        interview_service=interview_service,
+    )
+
+    final_report_generation_task_handler: FinalReportGenerationTaskHandler = providers.Singleton(
+        FinalReportGenerationTaskHandler,
         interview_service=interview_service,
     )
 

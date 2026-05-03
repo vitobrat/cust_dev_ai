@@ -6,7 +6,10 @@ import uuid
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
+import pytest
+
 from src.domains.interview.app.usecases.service import InterviewService
+from src.domains.interview.exceptions import InterviewError
 from src.domains.interview.schemas.common import (
     InterviewMessage,
     InterviewNotes,
@@ -15,12 +18,28 @@ from src.domains.interview.schemas.common import (
     PreInterviewPlan,
     SimulatedInterviewSession,
 )
+from src.domains.interview.schemas.final_report import (
+    FinalInterviewReport,
+    FinalReportConclusion,
+    FinalReportCoreSections,
+    FinalReportOpening,
+    FinalReportPlanningAnalysis,
+    FinalReportSection,
+)
+from src.domains.interview.schemas.final_report_generation import (
+    FinalReportGenerationInputData,
+    FinalReportGenerationOutputData,
+)
 from src.domains.interview.schemas.interview_orchestration import (
     InterviewOrchestrationInputData,
     InterviewOrchestrationOutputData,
 )
 from src.domains.sub_interview.app.constants import SubInterviewStatus
-from src.schemas.interview import InterviewSimulationTaskInputData
+from src.schemas.interview import (
+    FinalReportGenerationTaskInputData,
+    InterviewSimulationTaskInputData,
+    UpdateInterviewSchema,
+)
 
 
 def _task_input(interview_id: uuid.UUID) -> InterviewSimulationTaskInputData:
@@ -102,6 +121,74 @@ def _interview_entity(interview_id: uuid.UUID, persona_id: uuid.UUID) -> SimpleN
     return SimpleNamespace(id=interview_id, personas=[persona])
 
 
+def _interview_entity_with_sessions(interview_id: uuid.UUID, persona_id: uuid.UUID) -> SimpleNamespace:
+    session = _session(persona_id)
+    task_input = _task_input(interview_id)
+    graph_output = InterviewOrchestrationOutputData(
+        interview_reports=[_interview_report()],
+        interview_sessions=[session],
+        final_pre_interview_plan=_pre_interview_plan(),
+    )
+    return SimpleNamespace(
+        id=interview_id,
+        personas=[],
+        sub_interviews=[
+            SimpleNamespace(
+                status=SubInterviewStatus.COMPLETED,
+                chat_history=InterviewService._build_session_payload(session, task_input, graph_output),
+            ),
+        ],
+    )
+
+
+def _final_report() -> FinalInterviewReport:
+    opening = FinalReportOpening(
+        title="Custdev interview report",
+        introduction="Short introduction.",
+        report_scope="One completed interview.",
+    )
+    section = FinalReportSection(
+        section_kind="main_body",
+        title="Main report",
+        markdown_content="## Main report\n\nAlex has scattered notes.",
+        evidence_quotes=["My notes are scattered."],
+        data_points=["1 of 1 respondent mentioned scattered notes."],
+    )
+    conclusion = FinalReportConclusion(
+        key_takeaways=["Scattered notes are the strongest signal."],
+        conclusion="Validate budget ownership next.",
+    )
+    return FinalInterviewReport(
+        opening=opening,
+        planning_analysis=FinalReportPlanningAnalysis(
+            report_goal="Explain customer evidence.",
+            writing_plan=["Quantify pain and next steps."],
+        ),
+        core_sections=FinalReportCoreSections(
+            user_persona_map=section,
+            pain_points=section,
+            key_insights=section,
+            failure_risk_analysis=section,
+            recommendations=section,
+        ),
+        main_body=section,
+        conclusion=conclusion,
+        markdown_content="# Custdev interview report\n\n## Main report\n\nAlex has scattered notes.",
+        source_interview_count=1,
+    )
+
+
+def _get_report_generation_call_args(
+    final_report_graph: MagicMock,
+    interviews_repository: MagicMock,
+) -> tuple[object, object]:
+    graph_call = final_report_graph.process.await_args
+    update_call = interviews_repository.update_by_id.await_args
+    assert graph_call is not None
+    assert update_call is not None
+    return graph_call.args[0], update_call.args[1]
+
+
 async def test_simulate_interviews_runs_graph_and_persists_each_session() -> None:
     """Simulation service should load personas, run the graph, and save each generated session."""
     interview_id = uuid.uuid4()
@@ -136,3 +223,48 @@ async def test_simulate_interviews_runs_graph_and_persists_each_session() -> Non
     assert persisted_payload.status == SubInterviewStatus.COMPLETED
     assert persisted_payload.chat_history["interview_report"] == _interview_report().model_dump(mode="json")
     assert persisted_payload.chat_history["chat_history"][1]["content"] == "My notes are scattered after calls."
+    assert persisted_payload.chat_history["rewritten_user_request"] == _task_input(interview_id).rewritten_user_request
+
+
+async def test_generate_final_report_loads_sessions_from_db_and_persists_report() -> None:
+    """Final report generation should use only DB state and persist the generated report JSON."""
+    interview_id = uuid.uuid4()
+    persona_id = uuid.uuid4()
+    graph_output = FinalReportGenerationOutputData(final_report=_final_report())
+    interviews_repository = MagicMock()
+    interviews_repository.get_by_id = AsyncMock(return_value=_interview_entity_with_sessions(interview_id, persona_id))
+    interviews_repository.update_by_id = AsyncMock(return_value=SimpleNamespace(id=interview_id))
+    final_report_graph = MagicMock()
+    final_report_graph.process = AsyncMock(return_value=graph_output)
+    service = InterviewService(
+        interviews_repository=interviews_repository,
+        final_report_generation_graph=final_report_graph,
+    )
+
+    report_result = await service.generate_final_report(FinalReportGenerationTaskInputData(interview_id=interview_id))
+
+    graph_input, update_data = _get_report_generation_call_args(final_report_graph, interviews_repository)
+    assert isinstance(graph_input, FinalReportGenerationInputData)
+    assert report_result == graph_output
+    assert graph_input.interview_sessions == [_session(persona_id)]
+    assert graph_input.final_pre_interview_plan == _pre_interview_plan()
+    assert isinstance(update_data, UpdateInterviewSchema)
+    assert update_data.final_report == _final_report().model_dump(mode="json")
+
+
+async def test_generate_final_report_requires_completed_interview_reports() -> None:
+    """The service must fail before calling LLM when no completed interview reports exist."""
+    interview_id = uuid.uuid4()
+    interviews_repository = MagicMock()
+    interviews_repository.get_by_id = AsyncMock(return_value=SimpleNamespace(id=interview_id, sub_interviews=[]))
+    final_report_graph = MagicMock()
+    final_report_graph.process = AsyncMock()
+    service = InterviewService(
+        interviews_repository=interviews_repository,
+        final_report_generation_graph=final_report_graph,
+    )
+
+    with pytest.raises(InterviewError):
+        await service.generate_final_report(FinalReportGenerationTaskInputData(interview_id=interview_id))
+
+    final_report_graph.process.assert_not_awaited()
