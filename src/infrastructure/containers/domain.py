@@ -15,6 +15,9 @@ from src.domains.interview.app.workers.handler import (
     InterviewSimulationTaskHandler,
 )
 from src.domains.interview.db.postgres.repository import InterviewRepository
+from src.domains.interview.infrastructure.graph.final_report_generation import (
+    FinalReportGenerationGraph,
+)
 from src.domains.interview.infrastructure.graph.interview_orchestrator import (
     InterviewOrchestratorGraph,
 )
@@ -139,6 +142,7 @@ class InterviewContainer(containers.DeclarativeContainer):
         interview_simulation_graph: Factory for the second interview-stage graph.
         post_interview_update_graph: Factory for the third interview-stage graph.
         interview_orchestrator_graph: Factory for the full interview simulation graph.
+        final_report_generation_graph: Factory for final analytics report generation.
         interview_service: Factory for InterviewService instances.
     """
 
@@ -191,6 +195,14 @@ class InterviewContainer(containers.DeclarativeContainer):
         post_interview_update_graph=post_interview_update_graph,
         prompt_builder=prompt_builder,
         llm_adapter=infrastructure.llm_adapter,
+        langfuse_handler=infrastructure.langfuse_handler,
+    )
+
+    final_report_generation_graph: FinalReportGenerationGraph = providers.Factory(
+        FinalReportGenerationGraph,
+        prompt_builder=prompt_builder,
+        llm_adapter=infrastructure.llm_adapter,
+        recursion_limit=config.interview.recursion_limit,
         langfuse_handler=infrastructure.langfuse_handler,
     )
 

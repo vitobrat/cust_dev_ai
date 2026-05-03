@@ -117,6 +117,11 @@ InterviewSimulationGraph
 
 PostInterviewUpdateGraph
     → updates the pre-interview plan from the latest batch reports only
+
+FinalReportGenerationGraph
+    → plans the final analytics report from all completed interview sessions
+    → generates persona map, pain points, key insights, failure risks, and recommendations in parallel
+    → edits the main body and assembles a markdown report for later storage/export
 ```
 
 All graphs extend `BaseGraph` (`src/infrastructure/graph/base_graph.py`),

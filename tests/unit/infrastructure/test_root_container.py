@@ -7,6 +7,9 @@ from unittest.mock import MagicMock
 from langfuse.langchain import CallbackHandler
 
 from src.configs.consts import PROJECT_ROOT
+from src.domains.interview.infrastructure.graph.final_report_generation import (
+    FinalReportGenerationGraph,
+)
 from src.domains.interview.infrastructure.graph.interview_orchestrator import (
     InterviewOrchestratorGraph,
 )
@@ -85,6 +88,7 @@ def test_interview_container_exposes_pre_interview_preparation_graph(mock_llm: L
         simulation_graph = container.interview.interview_simulation_graph()
         post_interview_graph = container.interview.post_interview_update_graph()
         orchestrator_graph = container.interview.interview_orchestrator_graph()
+        final_report_graph = container.interview.final_report_generation_graph()
         task_handler = container.interview.interview_simulation_task_handler()
 
     assert isinstance(prompt_builder, InterviewPromptManager)
@@ -92,7 +96,11 @@ def test_interview_container_exposes_pre_interview_preparation_graph(mock_llm: L
     assert isinstance(simulation_graph, InterviewSimulationGraph)
     assert isinstance(post_interview_graph, PostInterviewUpdateGraph)
     assert isinstance(orchestrator_graph, InterviewOrchestratorGraph)
-    assert pre_interview_graph._prompt_builder is prompt_builder
-    assert simulation_graph._prompt_builder is prompt_builder
-    assert post_interview_graph._prompt_builder is prompt_builder
+    assert isinstance(final_report_graph, FinalReportGenerationGraph)
+    assert (
+        pre_interview_graph._prompt_builder,
+        simulation_graph._prompt_builder,
+        post_interview_graph._prompt_builder,
+        final_report_graph._prompt_builder,
+    ) == (prompt_builder, prompt_builder, prompt_builder, prompt_builder)
     assert task_handler._interview_service is not None
