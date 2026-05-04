@@ -11,7 +11,7 @@ VERSION = $(shell git rev-parse --short HEAD || echo "latest")
 REGISTRY = victorbratko
 IMAGE_TAG = $(REGISTRY)/$(IMAGE_NAME):$(VERSION)
 
-.PHONY: help install-lint lint tests unit integration up down logs
+.PHONY: help install-lint lint tests unit integration up down logs apply_migrations
 
 ## help: Показать это сообщение
 help:
@@ -43,9 +43,14 @@ integration:
 add_migration:
 	PYTHONPATH=$(PYTHONPATH_APP) alembic revision --autogenerate
 
-## roll_up_migrations: Накатить на базу данных последнию добавленную миграцию
+## roll_up_migrations: Накатить на базу данных последнию добавленную миграцию внутри Docker dev-сети
 roll_up_migrations:
-	PYTHONPATH=$(PYTHONPATH_APP) alembic upgrade head
+	VERSION=$(VERSION) $(DC_DEV) --env-file $(ENV_FILE) build app
+	$(DC_DEV) --env-file $(ENV_FILE) up -d --wait db
+	$(MAKE) apply_migrations
+
+apply_migrations:
+	$(DC_DEV) --env-file $(ENV_FILE) run --rm --no-deps app alembic upgrade head
 
 ## run: Развернуть локально fast api сервер согласно конфигурационному файлу
 run:
@@ -70,7 +75,11 @@ push:
 
 ## up: Запустить dev-окружение (подгружает .env автоматически через compose)
 up:
-	VERSION=$(VERSION) $(DC_DEV) --env-file $(ENV_FILE) up -d --build
+	VERSION=$(VERSION) $(DC_DEV) --env-file $(ENV_FILE) build app redis_worker
+	-$(DC_DEV) --env-file $(ENV_FILE) stop app redis_worker
+	$(DC_DEV) --env-file $(ENV_FILE) up -d --wait db redis minio
+	$(MAKE) apply_migrations
+	VERSION=$(VERSION) $(DC_DEV) --env-file $(ENV_FILE) up -d app redis_worker
 
 ## down: Остановить dev-окружение
 down:

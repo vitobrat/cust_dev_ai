@@ -20,6 +20,7 @@ from src.configs.consts import (
 )
 from src.configs.infrastructure_config import LangfuseConfigs as LangfuseConfigs
 from src.configs.infrastructure_config import LLMConfigs as LLMConfigs
+from src.configs.infrastructure_config import MinioConfigs as MinioConfigs
 from src.configs.infrastructure_config import (
     PostgresDBConfigs as PostgresDBConfigs,
 )
@@ -152,6 +153,7 @@ class AppConfigs(_BaseValidatedConfig):
         redis: Redis connection configuration.
         langfuse: Langfuse observability configuration.
         llm: LLM client configuration.
+        minio: Minio object storage configuration.
     """
 
     app_host: str
@@ -164,6 +166,7 @@ class AppConfigs(_BaseValidatedConfig):
     rabbitmq: RabbitMQConfigs
     postgres: PostgresDBConfigs
     redis: RedisConfigs
+    minio: MinioConfigs
     langfuse: LangfuseConfigs
     llm: LLMConfigs
 

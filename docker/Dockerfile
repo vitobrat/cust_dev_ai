@@ -41,6 +41,7 @@ WORKDIR /app
 COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
+COPY alembic.ini ./
 COPY config/ ./config/
 COPY src/ ./src/
 

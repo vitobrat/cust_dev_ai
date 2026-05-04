@@ -6,11 +6,15 @@ services:
       dockerfile: ./docker/Dockerfile
       target: dev
     restart: always
+    env_file:
+      - ../config/.env
 
     depends_on:
       db:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      minio:
         condition: service_healthy
 
     ports:
@@ -35,12 +39,16 @@ services:
       dockerfile: ./docker/Dockerfile
       target: dev
     restart: always
+    env_file:
+      - ../config/.env
     command: ["python", "src/redis_worker.py"]
 
     depends_on:
       db:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      minio:
         condition: service_healthy
 
     networks:
@@ -125,10 +133,49 @@ services:
           cpus: '0.25'
           memory: 64M
 
+  minio:
+    container_name: minio
+    image: minio/minio:latest
+    restart: unless-stopped
+
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+
+    command: ["server", "/data", "--console-address", ":9001"]
+
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+    ports:
+      - 127.0.0.1:9000:9000
+      - 127.0.0.1:9001:9001
+
+    volumes:
+      - cust_dev_ai_minio_data:/data
+
+    networks:
+      - backend_network
+
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.2'
+          memory: 256M
+
 networks:
   backend_network:
     driver: bridge
 
 volumes:
   cust_dev_ai_pg_data:
+    driver: local
+  cust_dev_ai_minio_data:
     driver: local

@@ -26,3 +26,14 @@ def test_final_report_storage_has_postgres_migration() -> None:
     assert 'op.add_column(\n        "interviews",' in migration_payload
     assert '"final_report"' in migration_payload
     assert "JSONB" in migration_payload
+
+
+def test_task_input_params_discriminator_has_backfill_migration() -> None:
+    """Legacy task payloads must be backfilled with the task_type discriminator."""
+    migration_payload = "\n".join(
+        migration_path.read_text(encoding="utf-8") for migration_path in sorted(_MIGRATIONS_DIR.glob("*.py"))
+    )
+
+    assert "jsonb_set" in migration_payload
+    assert "'{task_type}'" in migration_payload
+    assert "sub_interview_generation" in migration_payload

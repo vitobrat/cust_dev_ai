@@ -6,7 +6,15 @@ Tasks represent background jobs or operations with status tracking and progress 
 
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING, Annotated, Any, Optional, TypeAlias, Union
+from typing import (
+    TYPE_CHECKING,
+    Annotated,
+    Any,
+    Literal,
+    Optional,
+    TypeAlias,
+    Union,
+)
 
 from pydantic import BaseModel, ConfigDict, Discriminator, Field
 
@@ -22,12 +30,23 @@ from src.schemas.persona import (
     PersonasPipelineTaskInputData,
 )
 
+
+class SubInterviewGenerationTaskInputData(BaseModel):
+    """Legacy task input for the reserved sub-interview generation task type."""
+
+    task_type: Literal["sub_interview_generation"] = "sub_interview_generation"
+    interview_id: uuid.UUID
+    persona_id: Optional[uuid.UUID] = None
+    user_prompt: Optional[str] = None
+
+
 TaskInputParams: TypeAlias = Union[
     PersonasPipelineTaskInputData,
     GenerateSinglePersonaTaskInputData,
     GeneratePersonasTaskInputData,
     InterviewSimulationTaskInputData,
     FinalReportGenerationTaskInputData,
+    SubInterviewGenerationTaskInputData,
 ]
 
 if TYPE_CHECKING:

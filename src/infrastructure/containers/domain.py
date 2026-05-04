@@ -213,6 +213,7 @@ class InterviewContainer(containers.DeclarativeContainer):
         interview_orchestrator_graph=interview_orchestrator_graph,
         final_report_generation_graph=final_report_generation_graph,
         sub_interviews_repository=sub_interviews_repository,
+        object_storage_client=infrastructure.object_storage_client,
     )
 
     interview_simulation_task_handler: InterviewSimulationTaskHandler = providers.Singleton(

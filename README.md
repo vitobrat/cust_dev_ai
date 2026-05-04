@@ -24,7 +24,7 @@ Boundary between services:
 
 Current code status: this service contains a generic RabbitMQ client and
 RabbitMQ configuration, but no source-level calls to `ml_service` queues
-(`embeddings.request`, `search.request`) were found during the 2026-04-25 code
+(`embeddings.request`, `search.request`) were found during the 2026-05-04 code
 pass. Treat the concrete end-to-end RAG producer flow as planned or external
 until producer code is added here.
 
@@ -32,7 +32,8 @@ until producer code is added here.
 
 - `README.md`: project overview, setup, API, and system context.
 - `PROJECT_CONTEXT.md`: local bootstrap context for future AI agents.
-- `AGENTS.md`: local Codex prompt; currently ignored by `.gitignore`.
+- Root `AGENTS.md`: local Codex prompt; currently ignored by `.gitignore`.
+- `src/domains/interview/AGENTS.md`: interview-domain working context for AI agents.
 - `/home/vito_brat/ml_service/PROJECT_CONTEXT.md`: companion vector-search
   service context.
 - `/home/vito_brat/ml_service/ARCHITECTURE.md`: detailed vector-search
@@ -44,6 +45,7 @@ until producer code is added here.
 - **AI/LLM**: LangChain 1.2, LangGraph 1.0, Instructor 1.14 (structured outputs), Langfuse 3.12 (observability)
 - **LLM Provider**: OpenRouter (configurable, dev default: `qwen/qwen3.5-27b`)
 - **Database**: PostgreSQL 16 + SQLAlchemy 2.0 (async) + Alembic
+- **Object storage**: Minio/S3-compatible storage for generated report files
 - **DI**: dependency-injector 4.48
 - **Config**: OmegaConf + Pydantic Settings
 - **Testing**: pytest, testcontainers, polyfactory
@@ -54,7 +56,7 @@ The project follows **Domain-Driven Design** with a three-layer **Dependency Inj
 
 ```
 RootContainer
-├── InfrastructureContainer  — DatabaseClient, LLMAdapter, Langfuse
+├── InfrastructureContainer  — DatabaseClient, RedisClient, LLMAdapter, Langfuse, MinioObjectStorageClient
 └── DomainContainer          — per-domain containers (repo, service, graphs)
 ```
 
@@ -121,12 +123,17 @@ PostInterviewUpdateGraph
 FinalReportGenerationGraph
     → plans the final analytics report from all completed interview sessions
     → generates persona map, pain points, key insights, failure risks, and recommendations in parallel
-    → edits the main body and assembles a markdown report for later storage/export
+    → edits the main body and assembles a markdown report persisted by InterviewService
 ```
 
 All graphs extend `BaseGraph` (`src/infrastructure/graph/base_graph.py`),
 which wraps LangGraph's `StateGraph` and injects `LLMAdapter` and
 `BasePromptManager`.
+
+Final reports are stored in two layers: markdown content is uploaded to Minio
+and referenced through `interviews.report_content_url`, while the structured
+`FinalInterviewReport` is kept in `interviews.final_report` JSONB as a fallback
+and for internal analytics.
 
 ### API Endpoints
 
@@ -148,6 +155,7 @@ All endpoints follow the same response envelope:
 | GET | `/api/v1/interviews/` | List interviews (paginated) |
 | GET | `/api/v1/interviews/count` | Count interviews |
 | GET | `/api/v1/interviews/{id}` | Get interview by ID |
+| GET | `/api/v1/interviews/{id}/final_report/download` | Download generated final report markdown |
 | PUT | `/api/v1/interviews/{id}` | Update interview |
 | DELETE | `/api/v1/interviews/{id}` | Delete interview |
 | POST | `/api/v1/personas/` | Create persona (triggers LangGraph pipeline) |
@@ -173,6 +181,10 @@ All endpoints follow the same response envelope:
 | POST | `/api/v1/tasks/generate_personas_task` | Register batch persona generation task in Redis |
 | POST | `/api/v1/tasks/interview_simulation_task` | Register full interview simulation task in Redis |
 | POST | `/api/v1/tasks/generate_final_report_task` | Register final interview report generation task in Redis |
+
+Task registration route handlers are kept together in
+`src/domains/task/app/requests/router.py`; task API request/response schemas are
+kept together in `src/domains/task/app/requests/schema.py`.
 
 ## Configuration
 
@@ -204,6 +216,14 @@ redis:
   db: 0
   max_connections: 10
 
+minio:
+  endpoint: "minio:9000"
+  bucket_name: "custdev-reports"
+  secure: false
+  region: "us-east-1"
+  presigned_url_expire_seconds: 3600
+  offload_sync_calls: true
+
 rabbitmq:
   host: "rabbitmq"
   port: 5672
@@ -227,6 +247,9 @@ POSTGRES_DB=
 
 REDIS_PASSWORD=
 
+MINIO_ACCESS_KEY=
+MINIO_SECRET_KEY=
+
 RABBITMQ_USER=
 RABBITMQ_PASSWORD=
 
@@ -248,7 +271,7 @@ LLM_API_KEY=
 ### Run with Docker Compose
 
 ```bash
-# Start PostgreSQL + Redis + app + Redis worker
+# Start PostgreSQL + Redis + Minio + app + Redis worker
 make up
 
 # View logs
@@ -346,7 +369,7 @@ cust_dev_ai/
 │   └── logging.yaml                 # Logging configuration
 ├── docker/
 │   ├── Dockerfile                   # Multi-stage build (dev/prod)
-│   └── docker-compose.dev.yaml      # PostgreSQL 16 + FastAPI app
+│   └── docker-compose.dev.yaml      # PostgreSQL, Redis, Minio, FastAPI app, worker
 ├── src/
 │   ├── app.py                       # FastAPI entry point (lifespan, routers)
 │   ├── configs/                     # Pydantic config classes + constants
@@ -356,6 +379,7 @@ cust_dev_ai/
 │   │   ├── db/postgres/             # Base ORM model, client, CRUD repository ABC
 │   │   ├── graph/                   # BaseGraph (LangGraph wrapper)
 │   │   ├── llm/                     # LLMAdapter (Instructor + LangChain fallback)
+│   │   ├── object_storage/          # Minio object storage client for generated reports
 │   │   └── prompt/                  # BasePromptManager
 │   └── domains/
 │       ├── user/

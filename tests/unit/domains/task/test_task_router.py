@@ -5,20 +5,16 @@ from unittest.mock import AsyncMock, MagicMock
 
 from fastapi import Response, status
 
-from src.domains.task.app.requests.final_report_router import (
-    redis_register_final_report_generation_task,
-)
-from src.domains.task.app.requests.final_report_schema import (
-    PostFinalReportGenerationTaskRequest,
-)
-from src.domains.task.app.requests.interview_simulation_schema import (
-    PostInterviewSimulationTaskRequest,
-)
 from src.domains.task.app.requests.router import (
+    redis_register_final_report_generation_task,
     redis_register_generate_personas_task,
     redis_register_interview_simulation_task,
 )
-from src.domains.task.app.requests.schema import PostGeneratePersonasTaskRequest
+from src.domains.task.app.requests.schema import (
+    PostFinalReportGenerationTaskRequest,
+    PostGeneratePersonasTaskRequest,
+    PostInterviewSimulationTaskRequest,
+)
 from src.domains.task.exceptions import TaskQueueError
 from src.schemas.api_base import StatusType
 

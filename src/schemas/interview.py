@@ -26,7 +26,7 @@ class CreateInterviewSchema(BaseModel):
     """Schema for creating a new interview.
 
     Attributes:
-        report_content_url: Optional URL to the generated interview report content.
+        report_content_url: Stable internal object URI for generated interview report content.
         user_id: UUID of the user who created the interview.
     """
 
@@ -41,7 +41,7 @@ class UpdateInterviewSchema(BaseModel):
     All fields are optional to support partial updates.
 
     Attributes:
-        report_content_url: Updated URL to the interview report content.
+        report_content_url: Updated internal object URI for interview report content.
     """
 
     report_content_url: Optional[str] = Field(default=None, max_length=URL_MAX_LENGTH)

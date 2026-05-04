@@ -25,6 +25,10 @@ class InterviewDeletionFailed(InterviewNotFound):
     """Raised when interview deletion fails because the entity does not exist."""
 
 
+class InterviewFinalReportNotFound(InterviewNotFound):
+    """Raised when a final report file is not available for an interview."""
+
+
 class PreInterviewPreparationDraftNodeError(InterviewError):
     """Raised when a draft pre-interview preparation graph node is executed."""
 

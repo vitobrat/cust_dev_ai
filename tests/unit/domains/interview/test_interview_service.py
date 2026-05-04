@@ -34,7 +34,12 @@ from src.domains.interview.schemas.interview_orchestration import (
     InterviewOrchestrationInputData,
     InterviewOrchestrationOutputData,
 )
+from src.domains.interview.schemas.report_storage import FinalReportFile
 from src.domains.sub_interview.app.constants import SubInterviewStatus
+from src.infrastructure.object_storage.client import (
+    StoredObject,
+    StoredObjectContent,
+)
 from src.schemas.interview import (
     FinalReportGenerationTaskInputData,
     InterviewSimulationTaskInputData,
@@ -141,6 +146,22 @@ def _interview_entity_with_sessions(interview_id: uuid.UUID, persona_id: uuid.UU
     )
 
 
+def _interview_entity_with_saved_report(interview_id: uuid.UUID) -> SimpleNamespace:
+    return SimpleNamespace(
+        id=interview_id,
+        report_content_url=f"minio://custdev-reports/interviews/{interview_id}/final-report.md",
+        final_report=None,
+    )
+
+
+def _interview_entity_with_legacy_json_report(interview_id: uuid.UUID) -> SimpleNamespace:
+    return SimpleNamespace(
+        id=interview_id,
+        report_content_url=None,
+        final_report=_final_report().model_dump(mode="json"),
+    )
+
+
 def _final_report() -> FinalInterviewReport:
     opening = FinalReportOpening(
         title="Custdev interview report",
@@ -176,6 +197,42 @@ def _final_report() -> FinalInterviewReport:
         markdown_content="# Custdev interview report\n\n## Main report\n\nAlex has scattered notes.",
         source_interview_count=1,
     )
+
+
+class FakeObjectStorageClient:
+    """Object storage test double for interview service tests."""
+
+    def __init__(self) -> None:
+        self.upload_calls: list[tuple[str, str, str]] = []
+        self.download_calls: list[str] = []
+
+    async def upload_text(
+        self,
+        object_key: str,
+        markdown_content: str,
+        content_type: str,
+    ) -> StoredObject:
+        """Record text upload and return a deterministic object URI."""
+        self.upload_calls.append((object_key, markdown_content, content_type))
+        return StoredObject(
+            bucket_name="custdev-reports",
+            object_key=object_key,
+            object_uri=f"minio://custdev-reports/{object_key}",
+            content_type=content_type,
+        )
+
+    async def download_text(self, object_reference: str) -> StoredObjectContent:
+        """Record text download and return stored markdown."""
+        self.download_calls.append(object_reference)
+        return StoredObjectContent(
+            object_key="interviews/report.md",
+            report_content="# Stored report",
+            content_type="text/markdown; charset=utf-8",
+        )
+
+    async def get_presigned_get_url(self, object_reference: str) -> str:
+        """Return deterministic presigned URL."""
+        return f"https://storage.example.com/{object_reference}"
 
 
 def _get_report_generation_call_args(
@@ -227,10 +284,11 @@ async def test_simulate_interviews_runs_graph_and_persists_each_session() -> Non
 
 
 async def test_generate_final_report_loads_sessions_from_db_and_persists_report() -> None:
-    """Final report generation should use only DB state and persist the generated report JSON."""
+    """Final report generation should upload markdown and persist JSON plus object URI."""
     interview_id = uuid.uuid4()
     persona_id = uuid.uuid4()
     graph_output = FinalReportGenerationOutputData(final_report=_final_report())
+    object_storage = FakeObjectStorageClient()
     interviews_repository = MagicMock()
     interviews_repository.get_by_id = AsyncMock(return_value=_interview_entity_with_sessions(interview_id, persona_id))
     interviews_repository.update_by_id = AsyncMock(return_value=SimpleNamespace(id=interview_id))
@@ -239,17 +297,24 @@ async def test_generate_final_report_loads_sessions_from_db_and_persists_report(
     service = InterviewService(
         interviews_repository=interviews_repository,
         final_report_generation_graph=final_report_graph,
+        object_storage_client=object_storage,
     )
 
-    report_result = await service.generate_final_report(FinalReportGenerationTaskInputData(interview_id=interview_id))
+    assert (
+        await service.generate_final_report(FinalReportGenerationTaskInputData(interview_id=interview_id))
+    ) == graph_output
 
     graph_input, update_data = _get_report_generation_call_args(final_report_graph, interviews_repository)
+    expected_key = f"interviews/{interview_id}/final-report.md"
     assert isinstance(graph_input, FinalReportGenerationInputData)
-    assert report_result == graph_output
     assert graph_input.interview_sessions == [_session(persona_id)]
     assert graph_input.final_pre_interview_plan == _pre_interview_plan()
+    assert object_storage.upload_calls == [
+        (expected_key, _final_report().markdown_content, "text/markdown; charset=utf-8"),
+    ]
     assert isinstance(update_data, UpdateInterviewSchema)
     assert update_data.final_report == _final_report().model_dump(mode="json")
+    assert update_data.report_content_url == f"minio://custdev-reports/{expected_key}"
 
 
 async def test_generate_final_report_requires_completed_interview_reports() -> None:
@@ -268,3 +333,37 @@ async def test_generate_final_report_requires_completed_interview_reports() -> N
         await service.generate_final_report(FinalReportGenerationTaskInputData(interview_id=interview_id))
 
     final_report_graph.process.assert_not_awaited()
+
+
+async def test_get_final_report_file_downloads_markdown_from_object_storage() -> None:
+    """Final report download should read the object referenced by report_content_url."""
+    interview_id = uuid.uuid4()
+    object_storage = FakeObjectStorageClient()
+    interviews_repository = MagicMock()
+    interviews_repository.get_by_id = AsyncMock(return_value=_interview_entity_with_saved_report(interview_id))
+    service = InterviewService(
+        interviews_repository=interviews_repository,
+        object_storage_client=object_storage,
+    )
+
+    report_file = await service.get_final_report_file(interview_id)
+
+    assert isinstance(report_file, FinalReportFile)
+    assert report_file.report_content == b"# Stored report"
+    assert report_file.filename == f"interview-{interview_id}-final-report.md"
+    assert report_file.media_type == "text/markdown; charset=utf-8"
+    assert object_storage.download_calls == [f"minio://custdev-reports/interviews/{interview_id}/final-report.md"]
+
+
+async def test_get_final_report_file_falls_back_to_legacy_json_markdown() -> None:
+    """Existing rows with only JSONB report content should remain downloadable."""
+    interview_id = uuid.uuid4()
+    interviews_repository = MagicMock()
+    interviews_repository.get_by_id = AsyncMock(return_value=_interview_entity_with_legacy_json_report(interview_id))
+    service = InterviewService(interviews_repository=interviews_repository)
+
+    report_file = await service.get_final_report_file(interview_id)
+
+    assert report_file.report_content == _final_report().markdown_content.encode("utf-8")
+    assert report_file.filename == f"interview-{interview_id}-final-report.md"
+    assert report_file.media_type == "text/markdown; charset=utf-8"

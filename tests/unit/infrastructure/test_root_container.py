@@ -28,6 +28,7 @@ from src.domains.interview.infrastructure.prompt.prompt_manager import (
 from src.infrastructure.containers.domain import DomainContainer
 from src.infrastructure.containers.root import RootContainer
 from src.infrastructure.llm.llm_adapter import LLMAdapter, LLMProtocol
+from src.infrastructure.object_storage.client import ObjectStorageClientProtocol
 
 
 def test_root_container_wires_llm_and_adapter(container: RootContainer, mock_llm: LLMProtocol) -> None:
@@ -73,13 +74,25 @@ def test_interview_container_exposes_pre_interview_preparation_graph(mock_llm: L
                 "recursion_limit": 10,
                 "simulation_recursion_limit": 80,
             },
+            "minio": {
+                "endpoint": "minio:9000",
+                "access_key": "access",
+                "secret_key": "secret",
+                "bucket_name": "custdev-reports",
+                "secure": False,
+                "region": "us-east-1",
+                "presigned_url_expire_seconds": 3600,
+                "offload_sync_calls": False,
+            },
         },
     )
     fake_handler = MagicMock(spec=CallbackHandler)
+    fake_storage = MagicMock(spec=ObjectStorageClientProtocol)
 
     with (
         container.infrastructure.llm.override(mock_llm),
         container.infrastructure.langfuse_handler.override(fake_handler),
+        container.infrastructure.object_storage_client.override(fake_storage),  # type: ignore[attr-defined]
         container.interview.interviews_repository.override(MagicMock()),  # type: ignore[attr-defined]
         container.interview.sub_interviews_repository.override(MagicMock()),  # type: ignore[attr-defined]
     ):
@@ -90,7 +103,7 @@ def test_interview_container_exposes_pre_interview_preparation_graph(mock_llm: L
         orchestrator_graph = container.interview.interview_orchestrator_graph()
         final_report_graph = container.interview.final_report_generation_graph()
         task_handler = container.interview.interview_simulation_task_handler()
-        final_report_task_handler = container.interview.final_report_generation_task_handler()
+        assert container.interview.final_report_generation_task_handler()._interview_service is not None
 
     assert isinstance(prompt_builder, InterviewPromptManager)
     assert isinstance(pre_interview_graph, PreInterviewPreparationGraph)
@@ -105,4 +118,4 @@ def test_interview_container_exposes_pre_interview_preparation_graph(mock_llm: L
         final_report_graph._prompt_builder,
     ) == (prompt_builder, prompt_builder, prompt_builder, prompt_builder)
     assert task_handler._interview_service is not None
-    assert final_report_task_handler._interview_service is not None
+    assert task_handler._interview_service._object_storage_client is fake_storage

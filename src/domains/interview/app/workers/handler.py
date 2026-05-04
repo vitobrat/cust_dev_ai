@@ -1,4 +1,4 @@
-"""Interview simulation task handler for the Redis worker."""
+"""Interview-domain task handlers for the Redis worker."""
 
 from src.domains.interview.app.usecases.service import InterviewService
 from src.domains.task.app.constants import TaskType
@@ -10,7 +10,7 @@ from src.schemas.task import TaskSchema
 
 
 class InterviewSimulationTaskHandler:
-    """Handle the single interview-domain Redis task: full interview simulation."""
+    """Handle full interview simulation Redis tasks."""
 
     def __init__(self, interview_service: InterviewService) -> None:
         self._interview_service = interview_service

@@ -21,6 +21,14 @@ redis:
   db: 0
   max_connections: 10
 
+minio:
+  endpoint: "minio:9000"
+  bucket_name: "custdev-reports"
+  secure: false
+  region: "us-east-1"
+  presigned_url_expire_seconds: 3600
+  offload_sync_calls: true
+
 rabbitmq:
   host: "rabbitmq"
   port: 5672
