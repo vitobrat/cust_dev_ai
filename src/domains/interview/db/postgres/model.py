@@ -4,6 +4,7 @@ import uuid
 from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import ForeignKey
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.infrastructure.db.postgres.base import Base
@@ -25,7 +26,7 @@ class InterviewsOrm(Base):
 
     Attributes:
         id: Unique identifier (UUID).
-        report_content_url: Optional URL to the generated interview report.
+        report_content_url: Optional internal object URI to the generated interview report.
         created_at: Timestamp when the interview was created (UTC).
         updated_at: Timestamp when the interview was last updated (UTC).
         user_id: Foreign key reference to the user who owns this interview.
@@ -40,6 +41,7 @@ class InterviewsOrm(Base):
 
     id: Mapped[uuidpk]
     report_content_url: Mapped[Optional[str]]
+    final_report: Mapped[Optional[dict]] = mapped_column(JSONB)
     created_at: Mapped[created_date]
     updated_at: Mapped[updated_date]
     user_id: Mapped[uuid.UUID] = mapped_column(

@@ -13,6 +13,10 @@ from src.domains.task.exceptions import (
     TaskQueueError,
     TaskUpdateFailed,
 )
+from src.schemas.interview import (
+    FinalReportGenerationTaskInputData,
+    InterviewSimulationTaskInputData,
+)
 from src.schemas.persona import (
     GeneratePersonasTaskInputData,
     GenerateSinglePersonaTaskInputData,
@@ -97,6 +101,40 @@ class TaskService:
             TaskQueueError: If Redis enqueue fails (task is marked FAILED first).
         """
         await self._register_task(user_id, TaskType.SINGLE_PERSONA_GENERATION, task_input)
+
+    async def register_interview_simulation_task(
+        self,
+        user_id: uuid.UUID,
+        task_input: InterviewSimulationTaskInputData,
+    ) -> None:
+        """Register a full interview simulation task.
+
+        Args:
+            user_id: Owner of the task.
+            task_input: Input with interview reference, segment context, and batch controls.
+
+        Raises:
+            TaskCreationFailed: If Postgres insert fails.
+            TaskQueueError: If Redis enqueue fails (task is marked FAILED first).
+        """
+        await self._register_task(user_id, TaskType.INTERVIEW_SIMULATION, task_input)
+
+    async def register_final_report_generation_task(
+        self,
+        user_id: uuid.UUID,
+        task_input: FinalReportGenerationTaskInputData,
+    ) -> None:
+        """Register a final interview analytics report generation task.
+
+        Args:
+            user_id: Owner of the task.
+            task_input: Input with interview reference. Report source data is loaded from PostgreSQL.
+
+        Raises:
+            TaskCreationFailed: If Postgres insert fails.
+            TaskQueueError: If Redis enqueue fails (task is marked FAILED first).
+        """
+        await self._register_task(user_id, TaskType.REPORT_GENERATION, task_input)
 
     async def create_task(self, create_task_data: CreateTaskSchema) -> TaskRelEntitySchema:
         """Persist a new task entity.

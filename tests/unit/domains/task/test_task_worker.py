@@ -22,11 +22,15 @@ class _StopWorkerOnUpdate:
         self._stop_event.set()
 
 
-async def test_registry_registers_only_implemented_persona_task_types() -> None:
+async def test_registry_registers_only_implemented_task_types() -> None:
     """Incomplete task types must not be registered as executable handlers."""
     persona_task_handler = MagicMock()
+    interview_task_handler = MagicMock()
+    final_report_task_handler = MagicMock()
     container = MagicMock()
     container.persona.persona_task_handler.return_value = persona_task_handler
+    container.interview.interview_simulation_task_handler.return_value = interview_task_handler
+    container.interview.final_report_generation_task_handler.return_value = final_report_task_handler
 
     registry = build_handler_registry(container)
 
@@ -34,13 +38,15 @@ async def test_registry_registers_only_implemented_persona_task_types() -> None:
         TaskType.PERSONAS_PIPELINE: persona_task_handler,
         TaskType.PERSONAS_GENERATION: persona_task_handler,
         TaskType.SINGLE_PERSONA_GENERATION: persona_task_handler,
+        TaskType.INTERVIEW_SIMULATION: interview_task_handler,
+        TaskType.REPORT_GENERATION: final_report_task_handler,
     }
 
 
 async def test_worker_marks_unregistered_task_type_failed(sample_task: TaskSchema) -> None:
     """Unregistered task types must fail through the controlled worker path."""
     stop_event = asyncio.Event()
-    unsupported_task = sample_task.model_copy(update={"type": TaskType.REPORT_GENERATION})
+    unsupported_task = sample_task.model_copy(update={"type": TaskType.SUB_INTERVIEW_GENERATION})
     redis_task_repository = MagicMock()
     redis_task_repository.dequeue = AsyncMock(return_value=unsupported_task)
     task_service = MagicMock()
@@ -55,7 +61,7 @@ async def test_worker_marks_unregistered_task_type_failed(sample_task: TaskSchem
 
     update_data = task_service.update_task.call_args.args[1]
     assert update_data.status == TaskStatus.FAILED
-    assert update_data.error_log == "No executor for task type report_generation"
+    assert update_data.error_log == "No executor for task type sub_interview_generation"
 
 
 async def test_process_task_sets_visible_started_progress(sample_task: TaskSchema) -> None:

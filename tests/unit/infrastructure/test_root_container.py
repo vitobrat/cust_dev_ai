@@ -6,8 +6,29 @@ from unittest.mock import MagicMock
 
 from langfuse.langchain import CallbackHandler
 
+from src.configs.consts import PROJECT_ROOT
+from src.domains.interview.infrastructure.graph.final_report_generation import (
+    FinalReportGenerationGraph,
+)
+from src.domains.interview.infrastructure.graph.interview_orchestrator import (
+    InterviewOrchestratorGraph,
+)
+from src.domains.interview.infrastructure.graph.interview_simulation import (
+    InterviewSimulationGraph,
+)
+from src.domains.interview.infrastructure.graph.post_interview_update import (
+    PostInterviewUpdateGraph,
+)
+from src.domains.interview.infrastructure.graph.pre_interview_preparation import (
+    PreInterviewPreparationGraph,
+)
+from src.domains.interview.infrastructure.prompt.prompt_manager import (
+    InterviewPromptManager,
+)
+from src.infrastructure.containers.domain import DomainContainer
 from src.infrastructure.containers.root import RootContainer
 from src.infrastructure.llm.llm_adapter import LLMAdapter, LLMProtocol
+from src.infrastructure.object_storage.client import ObjectStorageClientProtocol
 
 
 def test_root_container_wires_llm_and_adapter(container: RootContainer, mock_llm: LLMProtocol) -> None:
@@ -41,3 +62,60 @@ def test_root_container_exposes_langfuse_client_and_handler(container: RootConta
 
     assert real_client is not fake_client
     assert isinstance(real_handler, CallbackHandler)
+
+
+def test_interview_container_exposes_pre_interview_preparation_graph(mock_llm: LLMProtocol) -> None:
+    """Ensure the interview domain resolves its first-stage graph dependencies."""
+    container = DomainContainer()
+    container.config.from_dict(
+        {
+            "interview": {
+                "prompts_dir": PROJECT_ROOT / "src/domains/interview/infrastructure/prompt",
+                "recursion_limit": 10,
+                "simulation_recursion_limit": 80,
+            },
+            "minio": {
+                "endpoint": "minio:9000",
+                "access_key": "access",
+                "secret_key": "secret",
+                "bucket_name": "custdev-reports",
+                "secure": False,
+                "region": "us-east-1",
+                "presigned_url_expire_seconds": 3600,
+                "offload_sync_calls": False,
+            },
+        },
+    )
+    fake_handler = MagicMock(spec=CallbackHandler)
+    fake_storage = MagicMock(spec=ObjectStorageClientProtocol)
+
+    with (
+        container.infrastructure.llm.override(mock_llm),
+        container.infrastructure.langfuse_handler.override(fake_handler),
+        container.infrastructure.object_storage_client.override(fake_storage),  # type: ignore[attr-defined]
+        container.interview.interviews_repository.override(MagicMock()),  # type: ignore[attr-defined]
+        container.interview.sub_interviews_repository.override(MagicMock()),  # type: ignore[attr-defined]
+    ):
+        prompt_builder = container.interview.prompt_builder()
+        pre_interview_graph = container.interview.pre_interview_preparation_graph()
+        simulation_graph = container.interview.interview_simulation_graph()
+        post_interview_graph = container.interview.post_interview_update_graph()
+        orchestrator_graph = container.interview.interview_orchestrator_graph()
+        final_report_graph = container.interview.final_report_generation_graph()
+        task_handler = container.interview.interview_simulation_task_handler()
+        assert container.interview.final_report_generation_task_handler()._interview_service is not None
+
+    assert isinstance(prompt_builder, InterviewPromptManager)
+    assert isinstance(pre_interview_graph, PreInterviewPreparationGraph)
+    assert isinstance(simulation_graph, InterviewSimulationGraph)
+    assert isinstance(post_interview_graph, PostInterviewUpdateGraph)
+    assert isinstance(orchestrator_graph, InterviewOrchestratorGraph)
+    assert isinstance(final_report_graph, FinalReportGenerationGraph)
+    assert (
+        pre_interview_graph._prompt_builder,
+        simulation_graph._prompt_builder,
+        post_interview_graph._prompt_builder,
+        final_report_graph._prompt_builder,
+    ) == (prompt_builder, prompt_builder, prompt_builder, prompt_builder)
+    assert task_handler._interview_service is not None
+    assert task_handler._interview_service._object_storage_client is fake_storage

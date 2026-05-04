@@ -9,6 +9,7 @@ poetry.lock
 CLAUDE.md
 PROJECT_CONTEXT.md
 AGENTS.md
+!src/domains/interview/AGENTS.md
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

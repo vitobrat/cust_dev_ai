@@ -8,7 +8,11 @@ from pathlib import Path
 from pydantic import Field, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from src.configs.consts import PROJECT_ROOT
+from src.configs.consts import (
+    MINIO_DEFAULT_PRESIGNED_URL_EXPIRE_SECONDS,
+    MINIO_MAX_PRESIGNED_URL_EXPIRE_SECONDS,
+    PROJECT_ROOT,
+)
 
 dotenv_path = Path(PROJECT_ROOT, "config", ".env")
 
@@ -115,6 +119,34 @@ class RedisConfigs(_BaseValidatedConfig):
             Redis URL in format ``redis://:password@host:port/db``.
         """
         return f"redis://:{self.password}@{self.host}:{self.port}/{self.db}"
+
+
+class MinioConfigs(_BaseValidatedConfig):
+    """Minio object storage configuration.
+
+    Attributes:
+        endpoint: Minio API endpoint without protocol, e.g. ``minio:9000``.
+        access_key: Access key loaded from environment.
+        secret_key: Secret key loaded from environment.
+        bucket_name: Bucket used for generated report files.
+        secure: Use HTTPS when connecting to Minio.
+        region: Minio/S3 bucket region.
+        presigned_url_expire_seconds: Default expiration for temporary download URLs.
+        offload_sync_calls: Run blocking SDK calls in a threadpool when True.
+    """
+
+    endpoint: str
+    access_key: str = Field(alias="MINIO_ACCESS_KEY")
+    secret_key: str = Field(alias="MINIO_SECRET_KEY")
+    bucket_name: str = Field(default="custdev-reports", min_length=3)
+    secure: bool = False
+    region: str = Field(default="us-east-1", min_length=1)
+    presigned_url_expire_seconds: int = Field(
+        default=MINIO_DEFAULT_PRESIGNED_URL_EXPIRE_SECONDS,
+        ge=60,
+        le=MINIO_MAX_PRESIGNED_URL_EXPIRE_SECONDS,
+    )
+    offload_sync_calls: bool = True
 
 
 class LangfuseConfigs(_BaseValidatedConfig):

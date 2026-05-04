@@ -8,6 +8,7 @@ import uuid
 from typing import Optional
 
 from sqlalchemy import func, select
+from sqlalchemy.orm import selectinload
 
 from src.domains.interview.db.postgres.model import InterviewsOrm
 from src.infrastructure.db.postgres.repository import BaseCRUDRepository
@@ -45,6 +46,7 @@ class InterviewRepository(
         async with self._db_client.session() as session:
             interview = InterviewsOrm(
                 report_content_url=create_data.report_content_url,
+                final_report=create_data.final_report,
                 user_id=create_data.user_id,
             )
             session.add(interview)
@@ -68,7 +70,17 @@ class InterviewRepository(
             SQLAlchemyError: If database operation fails.
         """
         async with self._db_client.session() as session:
-            interview = await session.get(InterviewsOrm, entity_id)
+            query = (
+                select(InterviewsOrm)
+                .options(
+                    selectinload(InterviewsOrm.personas),
+                    selectinload(InterviewsOrm.sub_interviews),
+                )
+                .where(InterviewsOrm.id == entity_id)
+                .execution_options(populate_existing=True)
+            )
+            interview_result = await session.execute(query)
+            interview = interview_result.scalar_one_or_none()
             if interview is None:
                 return None
             return InterviewRelEntitySchema.model_validate(interview)

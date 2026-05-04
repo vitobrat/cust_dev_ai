@@ -14,11 +14,13 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from src.configs.consts import (
     _DEFAULT_CONFIG_PATH,
     DEFAULT_GRAPH_RECURSION_LIMIT,
+    INTERVIEW_SIMULATION_RECURSION_LIMIT,
     PROJECT_ROOT,
     LogLevels,
 )
 from src.configs.infrastructure_config import LangfuseConfigs as LangfuseConfigs
 from src.configs.infrastructure_config import LLMConfigs as LLMConfigs
+from src.configs.infrastructure_config import MinioConfigs as MinioConfigs
 from src.configs.infrastructure_config import (
     PostgresDBConfigs as PostgresDBConfigs,
 )
@@ -120,6 +122,18 @@ class PersonaConfig(BaseDomainConfig):
     graph_recursion_limit: int = Field(default=5, description="Max recursion depth for LangGraph persona agent loops.")
 
 
+class InterviewConfig(BaseDomainConfig):
+    """Interview domain-specific configuration."""
+
+    prompts_dir: Path = Path(PROJECT_ROOT, "src", "domains", "interview", "infrastructure", "prompt")
+    recursion_limit: int = Field(default=10, ge=1, description="Max recursion depth for interview graph agents.")
+    simulation_recursion_limit: int = Field(
+        default=INTERVIEW_SIMULATION_RECURSION_LIMIT,
+        ge=1,
+        description="Max recursion depth for the simulated interview dialogue graph.",
+    )
+
+
 class AppConfigs(_BaseValidatedConfig):
     """Root application configuration aggregating all subsystem configs.
 
@@ -133,11 +147,13 @@ class AppConfigs(_BaseValidatedConfig):
         workers_number: Number of uvicorn worker processes.
         logger: Logging subsystem configuration.
         persona: Persona domain configuration.
+        interview: Interview domain configuration.
         rabbitmq: RabbitMQ broker configuration.
         postgres: PostgreSQL database configuration.
         redis: Redis connection configuration.
         langfuse: Langfuse observability configuration.
         llm: LLM client configuration.
+        minio: Minio object storage configuration.
     """
 
     app_host: str
@@ -146,9 +162,11 @@ class AppConfigs(_BaseValidatedConfig):
     workers_number: int
     logger: LoggerConfigs = Field(default_factory=LoggerConfigs)
     persona: PersonaConfig
+    interview: InterviewConfig = Field(default_factory=InterviewConfig)
     rabbitmq: RabbitMQConfigs
     postgres: PostgresDBConfigs
     redis: RedisConfigs
+    minio: MinioConfigs
     langfuse: LangfuseConfigs
     llm: LLMConfigs
 

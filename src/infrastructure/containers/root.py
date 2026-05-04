@@ -17,5 +17,6 @@ class RootContainer(containers.DeclarativeContainer):
 
     domain: DomainContainer = providers.Container(
         DomainContainer,
+        config=config,
         infrastructure=infrastructure,
     )

@@ -10,7 +10,9 @@ from src.configs.log.logger import get_logger
 from src.domains.task.app.requests.schema import (  # noqa: WPS235
     GetTasksRequest,
     PostCreateTaskRequest,
+    PostFinalReportGenerationTaskRequest,
     PostGeneratePersonasTaskRequest,
+    PostInterviewSimulationTaskRequest,
     PostPersonasPipelineTaskRequest,
     PostSinglePersonaTaskRequest,
     PutUpdateTaskRequest,
@@ -23,6 +25,10 @@ from src.domains.task.app.usecases.service import TaskService
 from src.domains.task.exceptions import TaskError, TaskNotFound, TaskQueueError
 from src.infrastructure.containers.domain import DomainContainer
 from src.schemas.api_base import ResponseBase, StatusType
+from src.schemas.interview import (
+    FinalReportGenerationTaskInputData,
+    InterviewSimulationTaskInputData,
+)
 from src.schemas.persona import (
     GeneratePersonasTaskInputData,
     GenerateSinglePersonaTaskInputData,
@@ -167,6 +173,101 @@ async def redis_register_generate_personas_task(
         )
     except Exception as exc:
         _logger.exception("Unexpected error during task registration generate personas")
+        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+        return ResponseBase(
+            details=f"Internal server error: {exc}",
+            status=StatusType.ERROR,
+        )
+
+    return TaskBoolResponse(msg=True, status=StatusType.SUCCESS)
+
+
+@router.post(
+    "/interview_simulation_task",
+    response_model=TaskBoolResponse | ResponseBase,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+@inject
+async def redis_register_interview_simulation_task(
+    response: Response,
+    request_data: PostInterviewSimulationTaskRequest,
+    task_service: TaskService = Depends(Provide[DomainContainer.task.task_service]),
+) -> TaskBoolResponse | ResponseBase:
+    """Register a full interview simulation task and enqueue it in Redis."""
+    try:
+        await task_service.register_interview_simulation_task(
+            user_id=request_data.user_id,
+            task_input=InterviewSimulationTaskInputData(
+                interview_id=request_data.interview_id,
+                rewritten_user_request=request_data.rewritten_user_request,
+                segment_name=request_data.segment_name,
+                segment_description=request_data.segment_description,
+                batch_size=request_data.batch_size,
+                max_iterations_per_interview=request_data.max_iterations_per_interview,
+                user_controlled_knowledge_context=request_data.user_controlled_knowledge_context,
+                allow_external_search=request_data.allow_external_search,
+            ),
+        )
+    except TaskQueueError as exc:
+        _logger.error("Task registration interview simulation in redis queue failed: %s", exc)
+        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+        return ResponseBase(
+            details=f"Task registration interview simulation in redis queue failed: {exc}",
+            status=StatusType.ERROR,
+        )
+    except TaskError as exc:
+        _logger.error("Task registration interview simulation failed: %s", exc)
+        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+        return ResponseBase(
+            details=f"Task registration interview simulation failed: {exc}",
+            status=StatusType.ERROR,
+        )
+    except Exception as exc:
+        _logger.exception("Unexpected error during task registration interview simulation")
+        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+        return ResponseBase(
+            details=f"Internal server error: {exc}",
+            status=StatusType.ERROR,
+        )
+
+    return TaskBoolResponse(msg=True, status=StatusType.SUCCESS)
+
+
+@router.post(
+    "/generate_final_report_task",
+    response_model=TaskBoolResponse | ResponseBase,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+@inject
+async def redis_register_final_report_generation_task(
+    response: Response,
+    request_data: PostFinalReportGenerationTaskRequest,
+    task_service: TaskService = Depends(Provide[DomainContainer.task.task_service]),
+) -> TaskBoolResponse | ResponseBase:
+    """Register a final report generation task and enqueue it in Redis."""
+    try:
+        await task_service.register_final_report_generation_task(
+            user_id=request_data.user_id,
+            task_input=FinalReportGenerationTaskInputData(
+                interview_id=request_data.interview_id,
+            ),
+        )
+    except TaskQueueError as exc:
+        _logger.error("Task registration final report generation in redis queue failed: %s", exc)
+        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+        return ResponseBase(
+            details=f"Task registration final report generation in redis queue failed: {exc}",
+            status=StatusType.ERROR,
+        )
+    except TaskError as exc:
+        _logger.error("Task registration final report generation failed: %s", exc)
+        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+        return ResponseBase(
+            details=f"Task registration final report generation failed: {exc}",
+            status=StatusType.ERROR,
+        )
+    except Exception as exc:
+        _logger.exception("Unexpected error during task registration final report generation")
         response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
         return ResponseBase(
             details=f"Internal server error: {exc}",

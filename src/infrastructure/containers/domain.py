@@ -12,9 +12,28 @@ from dependency_injector import containers, providers
 from src.configs.config import AppConfigs
 from src.domains.interview.app.usecases.service import InterviewService
 from src.domains.interview.app.workers.handler import (
-    ReportGenerationTaskHandler,
+    FinalReportGenerationTaskHandler,
+    InterviewSimulationTaskHandler,
 )
 from src.domains.interview.db.postgres.repository import InterviewRepository
+from src.domains.interview.infrastructure.graph.final_report_generation import (
+    FinalReportGenerationGraph,
+)
+from src.domains.interview.infrastructure.graph.interview_orchestrator import (
+    InterviewOrchestratorGraph,
+)
+from src.domains.interview.infrastructure.graph.interview_simulation import (
+    InterviewSimulationGraph,
+)
+from src.domains.interview.infrastructure.graph.post_interview_update import (
+    PostInterviewUpdateGraph,
+)
+from src.domains.interview.infrastructure.graph.pre_interview_preparation import (
+    PreInterviewPreparationGraph,
+)
+from src.domains.interview.infrastructure.prompt.prompt_manager import (
+    InterviewPromptManager,
+)
 from src.domains.persona.app.usecases.service import PersonaService
 from src.domains.persona.app.workers.handler import PersonaTaskHandler
 from src.domains.persona.db.postgres.repository import PersonaRepository
@@ -31,9 +50,6 @@ from src.domains.persona.infrastructure.prompt.prompt_manager import (
     PersonaPromptManager,
 )
 from src.domains.sub_interview.app.usecases.service import SubInterviewService
-from src.domains.sub_interview.app.workers.handler import (
-    SubInterviewGenerationTaskHandler,
-)
 from src.domains.sub_interview.db.postgres.repository import (
     SubInterviewRepository,
 )
@@ -122,6 +138,12 @@ class InterviewContainer(containers.DeclarativeContainer):
 
     Attributes:
         interviews_repository: Factory for InterviewRepository instances.
+        prompt_builder: Singleton InterviewPromptManager for prompt templates.
+        pre_interview_preparation_graph: Factory for the first interview-stage graph.
+        interview_simulation_graph: Factory for the second interview-stage graph.
+        post_interview_update_graph: Factory for the third interview-stage graph.
+        interview_orchestrator_graph: Factory for the full interview simulation graph.
+        final_report_generation_graph: Factory for final analytics report generation.
         interview_service: Factory for InterviewService instances.
     """
 
@@ -133,13 +155,74 @@ class InterviewContainer(containers.DeclarativeContainer):
         db_client=infrastructure.db_client,
     )
 
+    sub_interviews_repository: SubInterviewRepository = providers.Factory(
+        SubInterviewRepository,
+        db_client=infrastructure.db_client,
+    )
+
+    prompt_builder: InterviewPromptManager = providers.Singleton(
+        InterviewPromptManager,
+        prompts_dir=config.interview.prompts_dir,
+    )
+
+    pre_interview_preparation_graph: PreInterviewPreparationGraph = providers.Factory(
+        PreInterviewPreparationGraph,
+        prompt_builder=prompt_builder,
+        llm_adapter=infrastructure.llm_adapter,
+        recursion_limit=config.interview.recursion_limit,
+        langfuse_handler=infrastructure.langfuse_handler,
+    )
+
+    interview_simulation_graph: InterviewSimulationGraph = providers.Factory(
+        InterviewSimulationGraph,
+        prompt_builder=prompt_builder,
+        llm_adapter=infrastructure.llm_adapter,
+        recursion_limit=config.interview.simulation_recursion_limit,
+        langfuse_handler=infrastructure.langfuse_handler,
+    )
+
+    post_interview_update_graph: PostInterviewUpdateGraph = providers.Factory(
+        PostInterviewUpdateGraph,
+        prompt_builder=prompt_builder,
+        llm_adapter=infrastructure.llm_adapter,
+        recursion_limit=config.interview.recursion_limit,
+        langfuse_handler=infrastructure.langfuse_handler,
+    )
+
+    interview_orchestrator_graph: InterviewOrchestratorGraph = providers.Factory(
+        InterviewOrchestratorGraph,
+        pre_interview_preparation_graph=pre_interview_preparation_graph,
+        interview_simulation_graph=interview_simulation_graph,
+        post_interview_update_graph=post_interview_update_graph,
+        prompt_builder=prompt_builder,
+        llm_adapter=infrastructure.llm_adapter,
+        langfuse_handler=infrastructure.langfuse_handler,
+    )
+
+    final_report_generation_graph: FinalReportGenerationGraph = providers.Factory(
+        FinalReportGenerationGraph,
+        prompt_builder=prompt_builder,
+        llm_adapter=infrastructure.llm_adapter,
+        recursion_limit=config.interview.recursion_limit,
+        langfuse_handler=infrastructure.langfuse_handler,
+    )
+
     interview_service: InterviewService = providers.Factory(
         InterviewService,
         interviews_repository=interviews_repository,
+        interview_orchestrator_graph=interview_orchestrator_graph,
+        final_report_generation_graph=final_report_generation_graph,
+        sub_interviews_repository=sub_interviews_repository,
+        object_storage_client=infrastructure.object_storage_client,
     )
 
-    report_generation_handler: ReportGenerationTaskHandler = providers.Singleton(
-        ReportGenerationTaskHandler,
+    interview_simulation_task_handler: InterviewSimulationTaskHandler = providers.Singleton(
+        InterviewSimulationTaskHandler,
+        interview_service=interview_service,
+    )
+
+    final_report_generation_task_handler: FinalReportGenerationTaskHandler = providers.Singleton(
+        FinalReportGenerationTaskHandler,
         interview_service=interview_service,
     )
 
@@ -148,6 +231,8 @@ class SubInterviewContainer(containers.DeclarativeContainer):
     """Dependency injection container for SubInterview domain components.
 
     Manages the repository and service layer for sub-interview entities.
+    Simulated interview sessions are persisted here by ``InterviewService``;
+    there is no standalone Redis worker handler for this reserved domain yet.
 
     Attributes:
         sub_interviews_repository: Factory for SubInterviewRepository instances.
@@ -165,11 +250,6 @@ class SubInterviewContainer(containers.DeclarativeContainer):
     sub_interview_service: SubInterviewService = providers.Factory(
         SubInterviewService,
         sub_interviews_repository=sub_interviews_repository,
-    )
-
-    sub_interview_generation_handler: SubInterviewGenerationTaskHandler = providers.Singleton(
-        SubInterviewGenerationTaskHandler,
-        sub_interview_service=sub_interview_service,
     )
 
 
@@ -257,6 +337,7 @@ class DomainContainer(containers.DeclarativeContainer):
 
     interview: InterviewContainer = providers.Container(
         InterviewContainer,
+        config=config,
         infrastructure=infrastructure,
     )
 

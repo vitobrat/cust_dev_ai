@@ -14,6 +14,7 @@ from src.schemas.interview import (
     InterviewRelEntitySchema,
     UpdateInterviewSchema,
 )
+from src.schemas.persona import PersonaRelEntitySchema
 from src.schemas.user import UserEntitySchema, UserRelEntitySchema
 
 
@@ -395,6 +396,26 @@ class TestInterviewRepositoryGetById:
         assert interview_result is not None
         assert interview_result.personas is not None
         assert isinstance(interview_result.personas, list)
+
+    async def test_get_by_id_refreshes_personas_created_after_empty_relationship_was_loaded(
+        self,
+        db_client: DatabaseClient,
+        interview: InterviewRelEntitySchema,
+        persona_factory: Callable[..., PersonaRelEntitySchema],
+    ) -> None:
+        """Verify that get_by_id() does not return stale empty personas from the session identity map."""
+        # Arrange
+        repo = InterviewRepository(db_client)
+        assert interview.id is not None
+        assert interview.personas == []
+        persona = await persona_factory(interview_id=interview.id)
+
+        # Act
+        interview_result = await repo.get_by_id(interview.id)
+
+        # Assert
+        assert interview_result is not None
+        assert [loaded_persona.id for loaded_persona in interview_result.personas] == [persona.id]
 
     async def test_get_by_id_loads_sub_interviews_relationship(
         self,

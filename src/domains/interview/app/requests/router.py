@@ -5,6 +5,7 @@ from typing import Annotated
 
 from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, Query, Response, status
+from fastapi.responses import Response as FileResponse
 
 from src.configs.log.logger import get_logger
 from src.domains.interview.app.requests.schema import (  # noqa: WPS235
@@ -19,7 +20,11 @@ from src.domains.interview.app.requests.schema import (  # noqa: WPS235
     PutUpdateInterviewResponse,
 )
 from src.domains.interview.app.usecases.service import InterviewService
-from src.domains.interview.exceptions import InterviewError, InterviewNotFound
+from src.domains.interview.exceptions import (
+    InterviewError,
+    InterviewFinalReportNotFound,
+    InterviewNotFound,
+)
 from src.infrastructure.containers.domain import DomainContainer
 from src.schemas.api_base import ResponseBase, StatusType
 
@@ -143,6 +148,49 @@ async def get_interview(
         return ResponseBase(details=f"Internal server error: {exc}", status=StatusType.ERROR)
 
     return GetInterviewResponse(msg=interview, status=StatusType.SUCCESS)
+
+
+@router.get(
+    "/{interview_id}/final_report/download",
+    response_model=None,
+    status_code=status.HTTP_200_OK,
+)
+@inject
+async def download_final_report(
+    response: Response,
+    interview_id: uuid.UUID,
+    interview_service: InterviewService = Depends(Provide[DomainContainer.interview.interview_service]),
+) -> FileResponse | ResponseBase:
+    """Download the generated final interview report as markdown.
+
+    Args:
+        response: FastAPI response object used to override the status code on errors.
+        interview_id: UUID of the interview whose final report should be downloaded.
+        interview_service: Injected interview service.
+
+    Returns:
+        Markdown file response, or an error response.
+    """
+    try:
+        report_file = await interview_service.get_final_report_file(interview_id)
+    except (InterviewFinalReportNotFound, InterviewNotFound) as exc:
+        _logger.warning("Interview final report is unavailable: interview_id=%s", interview_id)
+        response.status_code = status.HTTP_404_NOT_FOUND
+        return ResponseBase(details=str(exc), status=StatusType.ERROR)
+    except InterviewError as exc:
+        _logger.error("Interview final report download failed: interview_id=%s error=%s", interview_id, exc)
+        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+        return ResponseBase(details=f"Interview final report download failed: {exc}", status=StatusType.ERROR)
+    except Exception as exc:
+        _logger.exception("Unexpected error during final report download")
+        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+        return ResponseBase(details=f"Internal server error: {exc}", status=StatusType.ERROR)
+
+    return FileResponse(
+        content=report_file.report_content,
+        media_type=report_file.media_type,
+        headers={"Content-Disposition": f'attachment; filename="{report_file.filename}"'},
+    )
 
 
 @router.put("/{interview_id}", response_model=PutUpdateInterviewResponse | ResponseBase, status_code=status.HTTP_200_OK)

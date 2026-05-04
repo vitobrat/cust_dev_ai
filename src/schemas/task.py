@@ -6,22 +6,47 @@ Tasks represent background jobs or operations with status tracking and progress 
 
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING, Annotated, Any, Optional, Union
+from typing import (
+    TYPE_CHECKING,
+    Annotated,
+    Any,
+    Literal,
+    Optional,
+    TypeAlias,
+    Union,
+)
 
 from pydantic import BaseModel, ConfigDict, Discriminator, Field
 
 from src.domains.task.app.constants import TaskStatus, TaskType
 from src.schemas.api_base import VerboseBase
+from src.schemas.interview import (
+    FinalReportGenerationTaskInputData,
+    InterviewSimulationTaskInputData,
+)
 from src.schemas.persona import (
     GeneratePersonasTaskInputData,
     GenerateSinglePersonaTaskInputData,
     PersonasPipelineTaskInputData,
 )
 
-TaskInputParams = Union[
+
+class SubInterviewGenerationTaskInputData(BaseModel):
+    """Legacy task input for the reserved sub-interview generation task type."""
+
+    task_type: Literal["sub_interview_generation"] = "sub_interview_generation"
+    interview_id: uuid.UUID
+    persona_id: Optional[uuid.UUID] = None
+    user_prompt: Optional[str] = None
+
+
+TaskInputParams: TypeAlias = Union[
     PersonasPipelineTaskInputData,
     GenerateSinglePersonaTaskInputData,
     GeneratePersonasTaskInputData,
+    InterviewSimulationTaskInputData,
+    FinalReportGenerationTaskInputData,
+    SubInterviewGenerationTaskInputData,
 ]
 
 if TYPE_CHECKING:
@@ -45,10 +70,7 @@ class CreateTaskSchema(BaseModel):
     status: TaskStatus = TaskStatus.PENDING
     progress: float = Field(default=0, ge=0, le=1.0)
     error_log: Optional[str] = None
-    input_params: Annotated[
-        Union[PersonasPipelineTaskInputData, GenerateSinglePersonaTaskInputData, GeneratePersonasTaskInputData],
-        Discriminator("task_type"),
-    ]
+    input_params: Annotated[TaskInputParams, Discriminator("task_type")]
     user_id: uuid.UUID
 
 
