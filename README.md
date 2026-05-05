@@ -234,7 +234,19 @@ llm:
   base_url: "https://openrouter.ai/api/v1"
   temperature: 0.1
   max_tokens: 4096
+  reasoning:
+    enabled: false
+    effort: "none"
+    exclude: true
+  extra_body: {}
 ```
+
+`llm.reasoning` builds the OpenRouter-compatible `extra_body.reasoning`
+payload passed to `ChatOpenAI`. The dev config disables provider-side
+reasoning by default. Use `llm.extra_body` for provider-specific request flags,
+for example Qwen-compatible `enable_thinking: false` when the selected provider
+expects that parameter, or nested values such as
+`chat_template_kwargs.enable_thinking` for vLLM-style Qwen deployments.
 
 ### Required Environment Variables (`config/.env`)
 

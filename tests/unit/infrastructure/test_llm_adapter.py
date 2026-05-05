@@ -423,3 +423,37 @@ async def test_structured_ainvoke_forwards_kwargs_to_instructor(
     create_chat_complection = mock_instructor_client.chat.completions.create
     call_kwargs = create_chat_complection.call_args.kwargs
     assert call_kwargs["max_retries"] == 5
+    assert call_kwargs["temperature"] == pytest.approx(0.7)
+
+
+@pytest.mark.asyncio
+async def test_structured_ainvoke_passes_llm_extra_body_to_instructor(
+    container: RootContainer,
+    mock_instructor_client: instructor.AsyncInstructor,
+) -> None:
+    """Configured provider payload must reach Instructor structured calls."""
+    mock_instructor_client.chat.completions.create = AsyncMock(return_value=StructuredOutputSchema(text="response"))
+    mock_llm = container.infrastructure.llm()
+    mock_llm.extra_body = {
+        "reasoning": {
+            "effort": "none",
+            "exclude": True,
+        },
+        "enable_thinking": False,
+    }
+
+    messages: List[BaseMessage] = [HumanMessage(content="test")]
+
+    with patch("src.infrastructure.llm.llm_adapter.instructor.from_openai", return_value=mock_instructor_client):
+        llm_adapter: LLMAdapter = container.infrastructure.llm_adapter()
+        await llm_adapter.structured_ainvoke(messages, StructuredOutputSchema)
+
+    create_chat_complection = mock_instructor_client.chat.completions.create
+    call_kwargs = create_chat_complection.call_args.kwargs
+    assert call_kwargs["extra_body"] == {
+        "reasoning": {
+            "effort": "none",
+            "exclude": True,
+        },
+        "enable_thinking": False,
+    }

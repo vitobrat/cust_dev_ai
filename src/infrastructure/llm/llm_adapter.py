@@ -250,11 +250,13 @@ class LLMAdapter:
             return await self._base_structured_ainvoke(messages, schema, max_retries, **kwargs)
 
         openai_messages = [self.to_openai_message(message) for message in messages]
+        instructor_kwargs = self._build_instructor_kwargs(kwargs)
         return await self._instructor_client.chat.completions.create(
             model=self._llm.model_name,
             response_model=schema,
             messages=openai_messages,
             max_retries=max_retries,
+            **instructor_kwargs,
         )
 
     def _setup_instructor_client(self) -> instructor.AsyncInstructor | None:
@@ -268,6 +270,30 @@ class LLMAdapter:
         except (AttributeError, Exception) as exc:
             self._logger.warning(f"Could not initialize Instructor: {exc}")
             return None
+
+    def _build_instructor_kwargs(self, kwargs: Dict[str, Any]) -> Dict[str, Any]:
+        """Build Instructor request kwargs and preserve configured provider payload."""
+        instructor_kwargs = dict(kwargs)
+        extra_body = self._merge_extra_body(
+            getattr(self._llm, "extra_body", None),
+            instructor_kwargs.pop("extra_body", None),
+        )
+        if extra_body:
+            instructor_kwargs["extra_body"] = extra_body
+
+        return instructor_kwargs
+
+    @staticmethod
+    def _merge_extra_body(configured_extra_body: Any, requested_extra_body: Any) -> Any:
+        """Merge model-level and request-level provider payload values."""
+        if isinstance(configured_extra_body, dict) and isinstance(requested_extra_body, dict):
+            return {
+                **configured_extra_body,
+                **requested_extra_body,
+            }
+        if requested_extra_body is not None:
+            return requested_extra_body
+        return configured_extra_body
 
     def _try_repair_json(self, raw_content: str, schema: type[Schema]) -> Schema | None:
         """Try to fix malformed JSON with json-repair and validate against ``schema``."""

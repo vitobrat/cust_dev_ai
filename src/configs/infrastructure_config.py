@@ -1,11 +1,12 @@
 """Infrastructure service configuration classes.
 
-Connection settings for PostgreSQL, RabbitMQ, Redis, Langfuse, and LLM.
+Connection settings for PostgreSQL, RabbitMQ, Redis, Minio, Langfuse, and LLM.
 """
 
 from pathlib import Path
+from typing import Literal, Optional
 
-from pydantic import Field, computed_field
+from pydantic import Field, JsonValue, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from src.configs.consts import (
@@ -163,6 +164,46 @@ class LangfuseConfigs(_BaseValidatedConfig):
     secret_key: str = Field(alias="LANGFUSE_SECRET_KEY")
 
 
+class LLMReasoningConfigs(_BaseValidatedConfig):
+    """Reasoning/thinking configuration for OpenRouter-compatible LLM requests.
+
+    Attributes:
+        enabled: Enable provider-side reasoning/thinking mode.
+        effort: OpenRouter normalized reasoning effort. Ignored when
+            ``max_tokens`` is set.
+        max_tokens: Optional explicit reasoning token budget for providers that
+            support direct budget control.
+        exclude: Ask the provider to omit reasoning content from the response.
+    """
+
+    enabled: bool = False
+    effort: Optional[Literal["none", "minimal", "low", "medium", "high", "xhigh"]] = "medium"
+    max_tokens: Optional[int] = Field(default=None, ge=1)
+    exclude: bool = True
+
+    @computed_field
+    @property
+    def payload(self) -> dict[str, JsonValue]:
+        """Build the OpenRouter reasoning request payload."""
+        if not self.enabled:
+            return {
+                "reasoning": {
+                    "effort": "none",
+                    "exclude": True,
+                },
+            }
+
+        reasoning_payload: dict[str, JsonValue] = {"exclude": self.exclude}
+        if self.max_tokens is not None:
+            reasoning_payload["max_tokens"] = self.max_tokens
+        elif self.effort is not None:
+            reasoning_payload["effort"] = self.effort
+        else:
+            reasoning_payload["enabled"] = True
+
+        return {"reasoning": reasoning_payload}
+
+
 class LLMConfigs(_BaseValidatedConfig):
     """LLM client configuration settings.
 
@@ -172,6 +213,8 @@ class LLMConfigs(_BaseValidatedConfig):
         api_key: API key for authentication (loaded from environment).
         temperature: Sampling temperature for generation.
         max_tokens: Maximum number of tokens in a single response.
+        reasoning: OpenRouter-compatible reasoning/thinking configuration.
+        extra_body: Additional provider-specific request payload values.
     """
 
     model_name: str
@@ -179,3 +222,14 @@ class LLMConfigs(_BaseValidatedConfig):
     api_key: str = Field(alias="LLM_API_KEY")
     temperature: float
     max_tokens: int
+    reasoning: LLMReasoningConfigs = Field(default_factory=LLMReasoningConfigs)
+    extra_body: dict[str, JsonValue] = Field(default_factory=dict)
+
+    @computed_field
+    @property
+    def extra_body_payload(self) -> dict[str, JsonValue]:
+        """Build the final extra_body payload passed to the LLM client."""
+        return {
+            **self.reasoning.payload,
+            **self.extra_body,
+        }
